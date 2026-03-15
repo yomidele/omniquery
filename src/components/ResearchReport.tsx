@@ -121,5 +121,6 @@ export function ResearchReport({ content, sources, isLoading, error }: ResearchR
         </div>
       )}
     </motion.div>
+    </div>
   );
 }
