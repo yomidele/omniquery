@@ -20,6 +20,76 @@ function sseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+async function callLLMWithFallback(
+  systemPrompt: string,
+  userPrompt: string,
+  openaiKey: string,
+  groqKey: string | undefined,
+  log: (step: string, status: LogEntry["status"], detail?: string) => void
+): Promise<ReadableStream<Uint8Array>> {
+  // Try OpenAI first
+  log("Generating research report (OpenAI)", "running");
+  try {
+    const openaiResp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openaiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        stream: true,
+      }),
+    });
+
+    if (openaiResp.ok && openaiResp.body) {
+      log("Generating research report (OpenAI)", "done");
+      return openaiResp.body;
+    }
+
+    const errText = await openaiResp.text();
+    throw new Error(`OpenAI error ${openaiResp.status}: ${errText}`);
+  } catch (e) {
+    const errMsg = e instanceof Error ? e.message : "unknown";
+    log("Generating research report (OpenAI)", "error", errMsg);
+
+    // Fallback to Groq
+    if (!groqKey) {
+      throw new Error(`OpenAI failed and GROQ_API_KEY not configured. OpenAI error: ${errMsg}`);
+    }
+
+    log("Falling back to Groq AI", "running");
+    const groqResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${groqKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        stream: true,
+      }),
+    });
+
+    if (!groqResp.ok || !groqResp.body) {
+      const groqErr = await groqResp.text();
+      log("Falling back to Groq AI", "error", groqErr);
+      throw new Error(`Both OpenAI and Groq failed. Groq error: ${groqErr}`);
+    }
+
+    log("Falling back to Groq AI", "done");
+    return groqResp.body;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -35,6 +105,7 @@ serve(async (req) => {
     }
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     const TAVILY_API_KEY = Deno.env.get("TAVILY_API_KEY");
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
     const CHROMA_API_KEY = Deno.env.get("CHROMA_API_KEY");
@@ -44,7 +115,6 @@ serve(async (req) => {
     if (!TAVILY_API_KEY) throw new Error("TAVILY_API_KEY not configured");
     if (!FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY not configured");
 
-    // Set up SSE stream
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
@@ -62,23 +132,18 @@ serve(async (req) => {
           if (CHROMA_API_KEY && CHROMA_ENDPOINT) {
             log("Querying Chroma memory", "running");
             try {
-              // Get embedding for the query
               const embResp = await fetch("https://api.openai.com/v1/embeddings", {
                 method: "POST",
                 headers: {
                   Authorization: `Bearer ${OPENAI_API_KEY}`,
                   "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                  model: "text-embedding-3-small",
-                  input: query,
-                }),
+                body: JSON.stringify({ model: "text-embedding-3-small", input: query }),
               });
               const embData = await embResp.json();
               const queryEmbedding = embData.data?.[0]?.embedding;
 
               if (queryEmbedding) {
-                // Query Chroma collection
                 const chromaResp = await fetch(
                   `${CHROMA_ENDPOINT}/api/v1/collections/research_agent/query`,
                   {
@@ -87,22 +152,17 @@ serve(async (req) => {
                       Authorization: `Bearer ${CHROMA_API_KEY}`,
                       "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({
-                      query_embeddings: [queryEmbedding],
-                      n_results: 10,
-                    }),
+                    body: JSON.stringify({ query_embeddings: [queryEmbedding], n_results: 10 }),
                   }
                 );
                 if (chromaResp.ok) {
                   const chromaData = await chromaResp.json();
                   if (chromaData.documents?.[0]) {
-                    chromaResults = chromaData.documents[0].map(
-                      (doc: string, i: number) => ({
-                        text: doc,
-                        source: chromaData.metadatas?.[0]?.[i]?.source || "Chroma",
-                        type: chromaData.metadatas?.[0]?.[i]?.type || "cached",
-                      })
-                    );
+                    chromaResults = chromaData.documents[0].map((doc: string, i: number) => ({
+                      text: doc,
+                      source: chromaData.metadatas?.[0]?.[i]?.source || "Chroma",
+                      type: chromaData.metadatas?.[0]?.[i]?.type || "cached",
+                    }));
                   }
                   log("Querying Chroma memory", "done", `Found ${chromaResults.length} cached results`);
                 } else {
@@ -116,35 +176,25 @@ serve(async (req) => {
             log("Querying Chroma memory", "done", "Chroma not configured, skipping");
           }
 
-          // Step 2: If insufficient results, search with Tavily
+          // Step 2: Search with Tavily if needed
           let tavilyUrls: { url: string; title: string }[] = [];
-          const needsWebSearch = chromaResults.length < 3;
-
-          if (needsWebSearch) {
+          if (chromaResults.length < 3) {
             log("Searching with Tavily", "running");
             try {
               const tavilyResp = await fetch("https://api.tavily.com/search", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  api_key: TAVILY_API_KEY,
-                  query,
-                  max_results: 5,
-                  include_answer: false,
-                }),
+                body: JSON.stringify({ api_key: TAVILY_API_KEY, query, max_results: 5, include_answer: false }),
               });
               const tavilyData = await tavilyResp.json();
-              tavilyUrls = (tavilyData.results || []).map((r: any) => ({
-                url: r.url,
-                title: r.title,
-              }));
+              tavilyUrls = (tavilyData.results || []).map((r: any) => ({ url: r.url, title: r.title }));
               log("Searching with Tavily", "done", `Found ${tavilyUrls.length} sources`);
             } catch (e) {
               log("Searching with Tavily", "error", e instanceof Error ? e.message : "Search failed");
             }
           }
 
-          // Step 3: Extract content from URLs via Firecrawl
+          // Step 3: Extract content via Firecrawl
           const extractedContent: { text: string; source: string; title: string }[] = [];
           if (tavilyUrls.length > 0) {
             log("Extracting content with Firecrawl", "running");
@@ -156,15 +206,10 @@ serve(async (req) => {
                     Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
                     "Content-Type": "application/json",
                   },
-                  body: JSON.stringify({
-                    url,
-                    formats: ["markdown"],
-                    onlyMainContent: true,
-                  }),
+                  body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true }),
                 });
                 const data = await resp.json();
                 const markdown = data.data?.markdown || data.markdown || "";
-                // Truncate to ~3000 chars per source
                 const truncated = markdown.substring(0, 3000);
                 if (truncated) {
                   extractedContent.push({ text: truncated, source: url, title });
@@ -181,60 +226,36 @@ serve(async (req) => {
           if (extractedContent.length > 0 && CHROMA_API_KEY && CHROMA_ENDPOINT) {
             log("Storing in Chroma", "running");
             try {
-              // Get embeddings for extracted content
               const embResp = await fetch("https://api.openai.com/v1/embeddings", {
                 method: "POST",
                 headers: {
                   Authorization: `Bearer ${OPENAI_API_KEY}`,
                   "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                  model: "text-embedding-3-small",
-                  input: extractedContent.map((c) => c.text),
-                }),
+                body: JSON.stringify({ model: "text-embedding-3-small", input: extractedContent.map((c) => c.text) }),
               });
               const embData = await embResp.json();
               const embeddings = embData.data?.map((d: any) => d.embedding) || [];
 
               if (embeddings.length > 0) {
-                // Ensure collection exists
                 try {
                   await fetch(`${CHROMA_ENDPOINT}/api/v1/collections`, {
                     method: "POST",
-                    headers: {
-                      Authorization: `Bearer ${CHROMA_API_KEY}`,
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      name: "research_agent",
-                      get_or_create: true,
-                    }),
+                    headers: { Authorization: `Bearer ${CHROMA_API_KEY}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ name: "research_agent", get_or_create: true }),
                   });
-                } catch {
-                  // Collection may already exist
-                }
+                } catch { /* Collection may already exist */ }
 
-                // Add documents
-                await fetch(
-                  `${CHROMA_ENDPOINT}/api/v1/collections/research_agent/add`,
-                  {
-                    method: "POST",
-                    headers: {
-                      Authorization: `Bearer ${CHROMA_API_KEY}`,
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      ids: extractedContent.map((_, i) => `${Date.now()}-${i}`),
-                      embeddings,
-                      documents: extractedContent.map((c) => c.text),
-                      metadatas: extractedContent.map((c) => ({
-                        source: c.source,
-                        type: "article",
-                        title: c.title,
-                      })),
-                    }),
-                  }
-                );
+                await fetch(`${CHROMA_ENDPOINT}/api/v1/collections/research_agent/add`, {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${CHROMA_API_KEY}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    ids: extractedContent.map((_, i) => `${Date.now()}-${i}`),
+                    embeddings,
+                    documents: extractedContent.map((c) => c.text),
+                    metadatas: extractedContent.map((c) => ({ source: c.source, type: "article", title: c.title })),
+                  }),
+                });
                 log("Storing in Chroma", "done", `Stored ${extractedContent.length} documents`);
               }
             } catch (e) {
@@ -242,9 +263,7 @@ serve(async (req) => {
             }
           }
 
-          // Step 5: Compile all content and generate response with OpenAI
-          log("Generating research report", "running");
-
+          // Step 5: Generate response with LLM (OpenAI → Groq fallback)
           const allContent = [
             ...chromaResults.map((r) => `[From Memory - ${r.source}]\n${r.text}`),
             ...extractedContent.map((r) => `[From Web - ${r.source}]\n${r.text}`),
@@ -282,34 +301,10 @@ ${allContent || "No content was found. Please provide a general answer based on 
 Source URLs:
 ${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") : "No sources available"}`;
 
-          const openaiResp = await fetch(
-            "https://api.openai.com/v1/chat/completions",
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${OPENAI_API_KEY}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: "gpt-4o-mini",
-                messages: [
-                  { role: "system", content: systemPrompt },
-                  { role: "user", content: userPrompt },
-                ],
-                stream: true,
-              }),
-            }
-          );
+          const llmStream = await callLLMWithFallback(systemPrompt, userPrompt, OPENAI_API_KEY, GROQ_API_KEY, log);
 
-          if (!openaiResp.ok) {
-            const errText = await openaiResp.text();
-            throw new Error(`OpenAI error ${openaiResp.status}: ${errText}`);
-          }
-
-          log("Generating research report", "done");
-
-          // Stream the OpenAI response
-          const reader = openaiResp.body!.getReader();
+          // Stream the LLM response
+          const reader = llmStream.getReader();
           const decoder = new TextDecoder();
           let buffer = "";
 
@@ -350,9 +345,7 @@ ${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") 
 
           send("done", {});
         } catch (e) {
-          send("error", {
-            message: e instanceof Error ? e.message : "Unknown error",
-          });
+          send("error", { message: e instanceof Error ? e.message : "Unknown error" });
         }
 
         controller.close();
@@ -370,13 +363,8 @@ ${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") 
   } catch (e) {
     console.error("research-agent error:", e);
     return new Response(
-      JSON.stringify({
-        error: e instanceof Error ? e.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
