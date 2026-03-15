@@ -1,8 +1,11 @@
+import { useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import type { Source } from "@/types/research";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Download, ClipboardCopy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 
 interface ResearchReportProps {
   content: string;
