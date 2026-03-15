@@ -15,6 +15,24 @@ interface ResearchReportProps {
 }
 
 export function ResearchReport({ content, sources, isLoading, error }: ResearchReportProps) {
+  const reportRef = useRef<HTMLDivElement>(null);
+
+  const handleCopy = useCallback(async () => {
+    const text = content + (sources.length > 0
+      ? "\n\nReferences:\n" + sources.map((s, i) => `[${i + 1}] ${s.title || s.url} - ${s.url}`).join("\n")
+      : "");
+    await navigator.clipboard.writeText(text);
+    toast({ title: "Copied to clipboard" });
+  }, [content, sources]);
+
+  const handleDownloadPDF = useCallback(async () => {
+    if (!reportRef.current) return;
+    const html2pdf = (await import("html2pdf.js")).default;
+    html2pdf()
+      .set({ margin: 0.5, filename: "research-report.pdf", html2canvas: { scale: 2 }, jsPDF: { unit: "in", format: "a4" } })
+      .from(reportRef.current)
+      .save();
+  }, []);
   if (error) {
     return (
       <div className="paper-view py-12">
