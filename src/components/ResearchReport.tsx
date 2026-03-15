@@ -1,8 +1,11 @@
+import { useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import type { Source } from "@/types/research";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Download, ClipboardCopy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 
 interface ResearchReportProps {
   content: string;
@@ -12,6 +15,24 @@ interface ResearchReportProps {
 }
 
 export function ResearchReport({ content, sources, isLoading, error }: ResearchReportProps) {
+  const reportRef = useRef<HTMLDivElement>(null);
+
+  const handleCopy = useCallback(async () => {
+    const text = content + (sources.length > 0
+      ? "\n\nReferences:\n" + sources.map((s, i) => `[${i + 1}] ${s.title || s.url} - ${s.url}`).join("\n")
+      : "");
+    await navigator.clipboard.writeText(text);
+    toast({ title: "Copied to clipboard" });
+  }, [content, sources]);
+
+  const handleDownloadPDF = useCallback(async () => {
+    if (!reportRef.current) return;
+    const html2pdf = (await import("html2pdf.js")).default;
+    html2pdf()
+      .set({ margin: 0.5, filename: "research-report.pdf", html2canvas: { scale: 2 }, jsPDF: { unit: "in", format: "a4" } })
+      .from(reportRef.current)
+      .save();
+  }, []);
   if (error) {
     return (
       <div className="paper-view py-12">
@@ -39,8 +60,20 @@ export function ResearchReport({ content, sources, isLoading, error }: ResearchR
   }
 
   return (
+    <div>
+      {content && !isLoading && (
+        <div className="paper-view pt-4 flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={handleCopy}>
+            <ClipboardCopy className="h-4 w-4 mr-1" /> Copy
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+            <Download className="h-4 w-4 mr-1" /> PDF
+          </Button>
+        </div>
+      )}
     <motion.div
       className="paper-view py-8"
+      ref={reportRef}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
@@ -88,5 +121,6 @@ export function ResearchReport({ content, sources, isLoading, error }: ResearchR
         </div>
       )}
     </motion.div>
+    </div>
   );
 }
