@@ -60,8 +60,20 @@ export function ResearchReport({ content, sources, isLoading, error }: ResearchR
   }
 
   return (
+    <div>
+      {content && !isLoading && (
+        <div className="paper-view pt-4 flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={handleCopy}>
+            <ClipboardCopy className="h-4 w-4 mr-1" /> Copy
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+            <Download className="h-4 w-4 mr-1" /> PDF
+          </Button>
+        </div>
+      )}
     <motion.div
       className="paper-view py-8"
+      ref={reportRef}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
