@@ -10,7 +10,7 @@ const Landing = () => {
         <div className="flex items-center gap-2">
           <BookOpen className="h-6 w-6 text-accent" />
           <span className="text-xl font-bold text-primary-foreground font-display tracking-wide">
-            SCRIPTURA
+            OMNIQUERY
           </span>
         </div>
         <div className="flex items-center gap-3">
