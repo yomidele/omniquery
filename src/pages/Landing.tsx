@@ -60,7 +60,7 @@ const Landing = () => {
       </main>
 
       <footer className="py-6 text-center text-primary-foreground/30 text-xs font-display">
-        © 2026 Scriptura Research Agent
+        © 2026 OmniQuery Research Agent
       </footer>
     </div>
   );

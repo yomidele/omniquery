@@ -29,7 +29,8 @@ const Signup = () => {
     if (error) {
       toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Check your email", description: "We sent you a verification link. Please verify your email to continue." });
+      toast({ title: "Account created!", description: "You can now sign in." });
+      navigate("/research");
     }
   };
 

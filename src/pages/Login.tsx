@@ -57,7 +57,7 @@ const Login = () => {
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label className="text-sm text-primary-foreground/80 font-display mb-1.5 block">
-              Email or Scriptura ID
+              Email
             </label>
             <input
               type="email"
