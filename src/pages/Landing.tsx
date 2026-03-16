@@ -26,10 +26,10 @@ const Landing = () => {
       {/* Hero */}
       <main className="flex-1 flex flex-col items-center justify-center px-8 text-center">
         <h1 className="text-5xl md:text-7xl font-bold text-accent font-display tracking-wider mb-4" style={{ fontFamily: "'Merriweather', serif" }}>
-          SCRIPTURA
+          OMNIQUERY
         </h1>
         <p className="text-primary-foreground/60 text-lg mb-2 font-display italic">
-          Enter the Sacred Space
+          Your AI Research Assistant
         </p>
         <p className="text-primary-foreground/80 max-w-xl text-base mb-10 font-body leading-relaxed">
           Autonomous AI-powered research agent. Ask any question and receive
