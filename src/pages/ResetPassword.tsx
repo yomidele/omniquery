@@ -37,7 +37,7 @@ const ResetPassword = () => {
       <div className="flex flex-col items-center mb-8">
         <BookOpen className="h-10 w-10 text-accent mb-3" />
         <h1 className="text-3xl font-bold text-accent tracking-wider" style={{ fontFamily: "'Merriweather', serif" }}>
-          SCRIPTURA
+          OMNIQUERY
         </h1>
       </div>
 

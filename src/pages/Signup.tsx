@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
@@ -12,6 +12,7 @@ const Signup = () => {
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +30,8 @@ const Signup = () => {
     if (error) {
       toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Check your email", description: "We sent you a verification link. Please verify your email to continue." });
+      toast({ title: "Account created!", description: "You can now sign in." });
+      navigate("/research");
     }
   };
 
@@ -47,10 +49,10 @@ const Signup = () => {
       <div className="flex flex-col items-center mb-8">
         <BookOpen className="h-10 w-10 text-accent mb-3" />
         <h1 className="text-4xl md:text-5xl font-bold text-accent tracking-wider" style={{ fontFamily: "'Merriweather', serif" }}>
-          SCRIPTURA
+          OMNIQUERY
         </h1>
         <p className="text-primary-foreground/50 text-sm italic font-display mt-1">
-          Enter the Sacred Space
+          Your AI Research Assistant
         </p>
       </div>
 

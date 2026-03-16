@@ -41,10 +41,10 @@ const Login = () => {
       <div className="flex flex-col items-center mb-8">
         <BookOpen className="h-10 w-10 text-accent mb-3" />
         <h1 className="text-4xl md:text-5xl font-bold text-accent tracking-wider" style={{ fontFamily: "'Merriweather', serif" }}>
-          SCRIPTURA
+          OMNIQUERY
         </h1>
         <p className="text-primary-foreground/50 text-sm italic font-display mt-1">
-          Enter the Sacred Space
+          Your AI Research Assistant
         </p>
       </div>
 
@@ -57,7 +57,7 @@ const Login = () => {
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label className="text-sm text-primary-foreground/80 font-display mb-1.5 block">
-              Email or Scriptura ID
+              Email
             </label>
             <input
               type="email"
