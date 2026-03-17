@@ -3,7 +3,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import type { Source } from "@/types/research";
-import { ExternalLink, Download, ClipboardCopy } from "lucide-react";
+import { Download, ClipboardCopy } from "lucide-react";
+import { LinkPreviewCard } from "@/components/LinkPreviewCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 
@@ -100,24 +101,18 @@ export function ResearchReport({ content, sources, isLoading, error }: ResearchR
           <h3 className="text-sm font-semibold text-muted-foreground font-display uppercase tracking-wide mb-3">
             References
           </h3>
-          <ol className="space-y-1.5">
+          <div className="space-y-2">
             {sources.map((source, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm">
-                <span className="text-muted-foreground font-display text-xs mt-0.5 min-w-[1.5rem]">
+              <div key={i} className="flex items-start gap-2">
+                <span className="text-muted-foreground font-display text-xs mt-3 min-w-[1.5rem]">
                   [{i + 1}]
                 </span>
-                <a
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent hover:underline flex items-center gap-1 font-display text-sm"
-                >
-                  {source.title || source.url}
-                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                </a>
-              </li>
+                <div className="flex-1">
+                  <LinkPreviewCard url={source.url} title={source.title} />
+                </div>
+              </div>
             ))}
-          </ol>
+          </div>
         </div>
       )}
     </motion.div>
