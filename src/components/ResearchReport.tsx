@@ -3,7 +3,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import type { Source } from "@/types/research";
-import { ExternalLink, Download, ClipboardCopy } from "lucide-react";
+import { Download, ClipboardCopy } from "lucide-react";
+import { LinkPreviewCard } from "@/components/LinkPreviewCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 
