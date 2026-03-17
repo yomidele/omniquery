@@ -18,20 +18,30 @@ const Signup = () => {
     e.preventDefault();
     if (!email.trim() || !password || !displayName.trim()) return;
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
-        emailRedirectTo: window.location.origin,
         data: { full_name: displayName.trim() },
       },
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Account created!", description: "You can now sign in." });
+      return;
+    }
+    // If auto-confirm is on, session is returned directly — user is logged in
+    if (data.session) {
       navigate("/research");
+    } else {
+      // Fallback: sign in immediately
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      setLoading(false);
+      if (signInError) {
+        toast({ title: "Account created but sign-in failed", description: signInError.message, variant: "destructive" });
+      } else {
+        navigate("/research");
+      }
     }
   };
 
