@@ -12,7 +12,7 @@ export function useResearch() {
     error: null,
   });
 
-  const research = useCallback(async (query: string) => {
+  const research = useCallback(async (query: string, depth: string = "standard") => {
     setState({
       logs: [],
       content: "",
@@ -28,7 +28,7 @@ export function useResearch() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, depth }),
       });
 
       if (!resp.ok || !resp.body) {
@@ -52,7 +52,6 @@ export function useResearch() {
 
           if (line.startsWith("event: ")) {
             const eventType = line.slice(7);
-            // Find the data line
             const dataIdx = buffer.indexOf("\n");
             if (dataIdx === -1) {
               buffer = line + "\n" + buffer;

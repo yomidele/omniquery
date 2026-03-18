@@ -55,16 +55,44 @@ function CodeBlock({ code, lang = "bash" }: { code: string; lang?: string }) {
 function EndpointCard({ ep }: { ep: Endpoint }) {
   const [open, setOpen] = useState(false);
   const curlExample = ep.method === "GET"
-    ? `curl -H "x-api-key: YOUR_API_KEY" \\\n  "${BASE_URL}${ep.path}"`
-    : `curl -X ${ep.method} -H "x-api-key: YOUR_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(ep.body || {})}' \\\n  "${BASE_URL}${ep.path}"`;
+    ? `curl -H "x-api-key: YOUR_API_KEY" \\
+  "${BASE_URL}${ep.path}"`
+    : `curl -X ${ep.method} -H "x-api-key: YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '${JSON.stringify(ep.body || {})}' \\
+  "${BASE_URL}${ep.path}"`;
 
   const jsExample = ep.method === "GET"
-    ? `const res = await fetch("${BASE_URL}${ep.path}", {\n  headers: { "x-api-key": "YOUR_API_KEY" }\n});\nconst data = await res.json();`
-    : `const res = await fetch("${BASE_URL}${ep.path}", {\n  method: "${ep.method}",\n  headers: {\n    "x-api-key": "YOUR_API_KEY",\n    "Content-Type": "application/json"\n  },\n  body: JSON.stringify(${JSON.stringify(ep.body || {})})\n});\nconst data = await res.json();`;
+    ? `const res = await fetch("${BASE_URL}${ep.path}", {
+  headers: { "x-api-key": "YOUR_API_KEY" }
+});
+const data = await res.json();`
+    : `const res = await fetch("${BASE_URL}${ep.path}", {
+  method: "${ep.method}",
+  headers: {
+    "x-api-key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(${JSON.stringify(ep.body || {})})
+});
+const data = await res.json();`;
 
   const pyExample = ep.method === "GET"
-    ? `import requests\n\nres = requests.get(\n  "${BASE_URL}${ep.path}",\n  headers={"x-api-key": "YOUR_API_KEY"}\n)\ndata = res.json()`
-    : `import requests\n\nres = requests.${ep.method.toLowerCase()}(\n  "${BASE_URL}${ep.path}",\n  headers={"x-api-key": "YOUR_API_KEY"},\n  json=${JSON.stringify(ep.body || {}).replace(/"/g, '"')}\n)\ndata = res.json()`;
+    ? `import requests
+
+res = requests.get(
+  "${BASE_URL}${ep.path}",
+  headers={"x-api-key": "YOUR_API_KEY"}
+)
+data = res.json()`
+    : `import requests
+
+res = requests.${ep.method.toLowerCase()}(
+  "${BASE_URL}${ep.path}",
+  headers={"x-api-key": "YOUR_API_KEY"},
+  json=${JSON.stringify(ep.body || {}).replace(/"/g, '\\"')}
+)
+data = res.json()`;
 
   return (
     <div className="border border-border/30 rounded-xl overflow-hidden">
@@ -153,61 +181,70 @@ function ApiKeyManager() {
       <h3 className="text-lg font-semibold text-foreground font-display flex items-center gap-2 mb-4">
         <Key className="h-5 w-5 text-accent" /> Your API Keys
       </h3>
-      {!user ? (
-        <p className="text-sm text-muted-foreground">
-          <Link to="/login" className="text-accent hover:underline">Sign in</Link> to manage API keys.
-        </p>
-      ) : (
-        <>
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              placeholder="Key name (optional)"
-              value={newKeyName}
-              onChange={(e) => setNewKeyName(e.target.value)}
-              className="flex-1 h-10 rounded-lg border border-border/30 bg-background px-3 text-sm text-foreground outline-none focus:border-accent/50"
-            />
-            <Button onClick={generateKey} size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
-              <Plus className="h-4 w-4 mr-1" /> Generate
-            </Button>
+      <div className="flex gap-2 mb-4">
+        <input
+          type="text"
+          placeholder="Key name (optional)"
+          value={newKeyName}
+          onChange={(e) => setNewKeyName(e.target.value)}
+          className="flex-1 h-10 rounded-lg border border-border/30 bg-background px-3 text-sm text-foreground outline-none focus:border-accent/50"
+        />
+        <Button onClick={generateKey} size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
+          <Plus className="h-4 w-4 mr-1" /> Generate
+        </Button>
+      </div>
+      {generatedKey && (
+        <div className="mb-4 p-3 bg-accent/10 border border-accent/20 rounded-lg">
+          <p className="text-xs text-accent font-semibold mb-1">⚠️ Copy this key now — it won't be shown again!</p>
+          <div className="flex items-center gap-2">
+            <code className="text-sm font-mono text-foreground break-all flex-1">{generatedKey}</code>
+            <button onClick={() => { navigator.clipboard.writeText(generatedKey); toast({ title: "Copied!" }); }}>
+              <Copy className="h-4 w-4 text-accent" />
+            </button>
           </div>
-          {generatedKey && (
-            <div className="mb-4 p-3 bg-accent/10 border border-accent/20 rounded-lg">
-              <p className="text-xs text-accent font-semibold mb-1">⚠️ Copy this key now — it won't be shown again!</p>
-              <div className="flex items-center gap-2">
-                <code className="text-sm font-mono text-foreground break-all flex-1">{generatedKey}</code>
-                <button onClick={() => { navigator.clipboard.writeText(generatedKey); toast({ title: "Copied!" }); }}>
-                  <Copy className="h-4 w-4 text-accent" />
-                </button>
-              </div>
-            </div>
-          )}
-          <div className="space-y-2">
-            {keys.map((k) => (
-              <div key={k.id} className="flex items-center justify-between px-3 py-2 bg-muted/30 rounded-lg">
-                <div>
-                  <span className="text-sm font-medium text-foreground">{k.name}</span>
-                  <code className="text-xs text-muted-foreground ml-2 font-mono">{k.key_prefix}</code>
-                </div>
-                <button onClick={() => deleteKey(k.id)} className="text-destructive/60 hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-            {keys.length === 0 && <p className="text-sm text-muted-foreground">No API keys yet.</p>}
-          </div>
-        </>
+        </div>
       )}
+      <div className="space-y-2">
+        {keys.map((k) => (
+          <div key={k.id} className="flex items-center justify-between px-3 py-2 bg-muted/30 rounded-lg">
+            <div>
+              <span className="text-sm font-medium text-foreground">{k.name}</span>
+              <code className="text-xs text-muted-foreground ml-2 font-mono">{k.key_prefix}</code>
+            </div>
+            <button onClick={() => deleteKey(k.id)} className="text-destructive/60 hover:text-destructive">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+        {keys.length === 0 && <p className="text-sm text-muted-foreground">No API keys yet.</p>}
+      </div>
     </div>
   );
 }
 
 const ApiDocs = () => {
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/login");
+    }
+  }, [user, authLoading, navigate]);
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <span className="text-muted-foreground font-display">Loading…</span>
+      </div>
+    );
+  }
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border/30 bg-card/50">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
@@ -215,15 +252,11 @@ const ApiDocs = () => {
             <span className="text-xl font-bold text-foreground font-display">OmniQuery</span>
             <span className="text-xs bg-accent/10 text-accent px-2 py-0.5 rounded-full font-medium">API</span>
           </Link>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate("/research")}>Dashboard</Button>
-            <Button variant="outline" size="sm" onClick={() => navigate("/login")}>Sign In</Button>
-          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate("/research")}>Dashboard</Button>
         </div>
       </header>
 
       <div className="max-w-5xl mx-auto px-6 py-10 space-y-10">
-        {/* Intro */}
         <div>
           <h1 className="text-3xl font-bold text-foreground font-display mb-3">API Documentation</h1>
           <p className="text-muted-foreground max-w-2xl">
@@ -231,26 +264,25 @@ const ApiDocs = () => {
           </p>
         </div>
 
-        {/* Auth section */}
         <div className="space-y-3">
           <h2 className="text-xl font-semibold text-foreground font-display">Authentication</h2>
           <p className="text-sm text-muted-foreground">All endpoints (except <code className="text-accent">/</code>) require authentication via one of:</p>
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="p-4 border border-border/30 rounded-xl">
               <h3 className="font-semibold text-foreground text-sm mb-2">API Key (recommended)</h3>
-              <CodeBlock code={`curl -H "x-api-key: omq_your_key_here" \\\n  ${BASE_URL}/profile`} />
+              <CodeBlock code={`curl -H "x-api-key: omq_your_key_here" \\
+  ${BASE_URL}/profile`} />
             </div>
             <div className="p-4 border border-border/30 rounded-xl">
               <h3 className="font-semibold text-foreground text-sm mb-2">Bearer Token</h3>
-              <CodeBlock code={`curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \\\n  ${BASE_URL}/profile`} />
+              <CodeBlock code={`curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \\
+  ${BASE_URL}/profile`} />
             </div>
           </div>
         </div>
 
-        {/* API Key Manager */}
         <ApiKeyManager />
 
-        {/* Endpoints */}
         <div className="space-y-3">
           <h2 className="text-xl font-semibold text-foreground font-display">Endpoints</h2>
           <div className="space-y-3">
@@ -260,7 +292,6 @@ const ApiDocs = () => {
           </div>
         </div>
 
-        {/* Rate limits */}
         <div className="p-5 border border-border/30 rounded-xl">
           <h2 className="text-lg font-semibold text-foreground font-display mb-2">Rate Limits</h2>
           <p className="text-sm text-muted-foreground">
