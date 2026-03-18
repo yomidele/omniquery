@@ -8,6 +8,7 @@ const corsHeaders = {
 
 interface ResearchRequest {
   query: string;
+  depth?: string; // quick | standard | deep | academic | expert
 }
 
 interface LogEntry {
@@ -20,14 +21,113 @@ function sseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+const DEPTH_CONFIG: Record<string, { maxSources: number; maxContent: number; model: string }> = {
+  quick:    { maxSources: 2, maxContent: 1500, model: "gpt-4o-mini" },
+  standard: { maxSources: 5, maxContent: 3000, model: "gpt-4o-mini" },
+  deep:     { maxSources: 8, maxContent: 5000, model: "gpt-4o-mini" },
+  academic: { maxSources: 10, maxContent: 6000, model: "gpt-4o-mini" },
+  expert:   { maxSources: 12, maxContent: 8000, model: "gpt-4o-mini" },
+};
+
+function getSystemPrompt(depth: string): string {
+  const base = `You are OmniQuery, a professional AI Research Engine. Generate a comprehensive, well-structured research report in Markdown format.
+
+IMPORTANT: Only use information from the provided sources. Cite sources inline where relevant. Use proper Markdown formatting with headings, bullet points, tables, and structured content.
+
+When a topic involves processes, systems, or workflows, include Mermaid.js diagrams using fenced code blocks with the language "mermaid". Example:
+
+\`\`\`mermaid
+graph TD
+    A[Start] --> B[Process]
+    B --> C[Result]
+\`\`\`
+`;
+
+  if (depth === "quick") {
+    return base + `\nProvide a concise answer with:
+# Title
+## Summary
+Brief 2-3 paragraph answer with key points.
+## Sources
+Numbered list of sources used.`;
+  }
+
+  if (depth === "standard") {
+    return base + `\nProvide a structured report:
+# Title
+## Executive Summary
+3-5 paragraph overview.
+## Detailed Analysis
+In-depth exploration of the topic with examples.
+## Key Findings
+Bullet points of important discoveries.
+## Sources
+Numbered list of sources used.`;
+  }
+
+  // deep, academic, expert all get the full framework
+  return base + `\nYour response MUST follow this exact structure:
+
+# [Concise Research Title]
+
+## Executive Summary
+3-5 paragraph comprehensive overview of all findings.
+
+## Background Context
+Historical context, foundational concepts, and how the topic evolved.
+
+## Detailed Research Analysis
+Break the research into multiple paths. For each path provide long explanations, real-world examples, comparisons, and technical breakdowns. Cover:
+- Historical context
+- Technical explanation
+- Current industry practices
+- Expert opinions
+- Case studies
+- Advantages and risks
+
+## Data & Evidence
+Include statistics, research findings, case studies, structured tables, and industry data. Use Markdown tables where appropriate.
+
+## Visual Diagrams
+Generate Mermaid.js diagrams for any processes, systems, architectures, or workflows discussed. Use fenced code blocks with language "mermaid".
+
+## Expert Insights
+Analysis from multiple expert perspectives. Include different viewpoints and schools of thought.
+
+## Advantages & Limitations
+### Advantages
+- List with explanations
+### Limitations
+- List with explanations
+### Alternative Viewpoints
+- Common misconceptions addressed
+### Critical Analysis
+- Contradictions between sources
+
+## Practical Applications
+How the knowledge can be applied, industries affected, real-world implementation strategies.
+
+## Future Outlook
+Upcoming trends, technological developments, potential disruptions, predictions for the next 5-10 years.
+
+## Conclusion
+Comprehensive wrap-up with key takeaways and recommendations.
+
+## Sources
+Numbered list of all source URLs used.
+
+${depth === "expert" ? "IMPORTANT: This is an EXPERT-LEVEL analysis. Go extremely deep into technical details, include multiple case studies, cross-reference sources, identify contradictions, and provide nuanced expert-level insights. Every claim must be supported by evidence from the sources." : ""}
+${depth === "academic" ? "IMPORTANT: This is an ACADEMIC-LEVEL analysis. Structure the report like an academic paper with rigorous analysis, proper citations, methodology discussion, and literature review style coverage." : ""}`;
+}
+
 async function callLLMWithFallback(
   systemPrompt: string,
   userPrompt: string,
   openaiKey: string,
   groqKey: string | undefined,
+  model: string,
   log: (step: string, status: LogEntry["status"], detail?: string) => void
 ): Promise<ReadableStream<Uint8Array>> {
-  // Try OpenAI first
   log("Generating research report (OpenAI)", "running");
   try {
     const openaiResp = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -37,7 +137,7 @@ async function callLLMWithFallback(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -57,7 +157,6 @@ async function callLLMWithFallback(
     const errMsg = e instanceof Error ? e.message : "unknown";
     log("Generating research report (OpenAI)", "error", errMsg);
 
-    // Fallback to Groq
     if (!groqKey) {
       throw new Error(`OpenAI failed and GROQ_API_KEY not configured. OpenAI error: ${errMsg}`);
     }
@@ -96,13 +195,16 @@ serve(async (req) => {
   }
 
   try {
-    const { query } = (await req.json()) as ResearchRequest;
+    const { query, depth = "standard" } = (await req.json()) as ResearchRequest;
     if (!query) {
       return new Response(JSON.stringify({ error: "query is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const depthKey = DEPTH_CONFIG[depth] ? depth : "standard";
+    const config = DEPTH_CONFIG[depthKey];
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
@@ -127,6 +229,8 @@ serve(async (req) => {
         };
 
         try {
+          log("Research depth", "done", `${depthKey} (${config.maxSources} sources)`);
+
           // Step 1: Query Chroma for existing knowledge
           let chromaResults: any[] = [];
           if (CHROMA_API_KEY && CHROMA_ENDPOINT) {
@@ -152,7 +256,7 @@ serve(async (req) => {
                       Authorization: `Bearer ${CHROMA_API_KEY}`,
                       "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({ query_embeddings: [queryEmbedding], n_results: 10 }),
+                    body: JSON.stringify({ query_embeddings: [queryEmbedding], n_results: config.maxSources }),
                   }
                 );
                 if (chromaResp.ok) {
@@ -178,13 +282,14 @@ serve(async (req) => {
 
           // Step 2: Search with Tavily if needed
           let tavilyUrls: { url: string; title: string }[] = [];
-          if (chromaResults.length < 3) {
+          const needsWebSearch = chromaResults.length < Math.min(3, config.maxSources);
+          if (needsWebSearch) {
             log("Searching with Tavily", "running");
             try {
               const tavilyResp = await fetch("https://api.tavily.com/search", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ api_key: TAVILY_API_KEY, query, max_results: 5, include_answer: false }),
+                body: JSON.stringify({ api_key: TAVILY_API_KEY, query, max_results: config.maxSources, include_answer: false }),
               });
               const tavilyData = await tavilyResp.json();
               tavilyUrls = (tavilyData.results || []).map((r: any) => ({ url: r.url, title: r.title }));
@@ -198,7 +303,7 @@ serve(async (req) => {
           const extractedContent: { text: string; source: string; title: string }[] = [];
           if (tavilyUrls.length > 0) {
             log("Extracting content with Firecrawl", "running");
-            const extractPromises = tavilyUrls.slice(0, 5).map(async ({ url, title }) => {
+            const extractPromises = tavilyUrls.slice(0, config.maxSources).map(async ({ url, title }) => {
               try {
                 const resp = await fetch("https://api.firecrawl.dev/v1/scrape", {
                   method: "POST",
@@ -210,7 +315,7 @@ serve(async (req) => {
                 });
                 const data = await resp.json();
                 const markdown = data.data?.markdown || data.markdown || "";
-                const truncated = markdown.substring(0, 3000);
+                const truncated = markdown.substring(0, config.maxContent);
                 if (truncated) {
                   extractedContent.push({ text: truncated, source: url, title });
                 }
@@ -263,7 +368,7 @@ serve(async (req) => {
             }
           }
 
-          // Step 5: Generate response with LLM (OpenAI → Groq fallback)
+          // Step 5: Generate response with LLM
           const allContent = [
             ...chromaResults.map((r) => `[From Memory - ${r.source}]\n${r.text}`),
             ...extractedContent.map((r) => `[From Web - ${r.source}]\n${r.text}`),
@@ -274,26 +379,11 @@ serve(async (req) => {
             ...extractedContent.map((r) => r.source),
           ];
 
-          const systemPrompt = `You are an AI Research Agent. Generate a comprehensive, well-structured research report in Markdown format.
-
-Your response MUST follow this exact structure:
-# {Concise Title}
-
-**Summary:**
-
-{3-5 paragraphs of well-researched, structured summary. Use the provided source content to synthesize accurate findings. Do not hallucinate.}
-
-**Sources:**
-
-{Numbered list of all source URLs used}
-
-**Deep Insights:**
-
-{Additional analysis: comparisons between sources, contradictions found, key takeaways, and areas that need further research}
-
-IMPORTANT: Only use information from the provided sources. Cite sources inline where relevant.`;
+          const systemPrompt = getSystemPrompt(depthKey);
 
           const userPrompt = `Research Question: ${query}
+
+Research Depth Level: ${depthKey.toUpperCase()}
 
 Available Sources and Content:
 ${allContent || "No content was found. Please provide a general answer based on your training, and note that no external sources were available."}
@@ -301,7 +391,7 @@ ${allContent || "No content was found. Please provide a general answer based on 
 Source URLs:
 ${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") : "No sources available"}`;
 
-          const llmStream = await callLLMWithFallback(systemPrompt, userPrompt, OPENAI_API_KEY, GROQ_API_KEY, log);
+          const llmStream = await callLLMWithFallback(systemPrompt, userPrompt, OPENAI_API_KEY, GROQ_API_KEY, config.model, log);
 
           // Stream the LLM response
           const reader = llmStream.getReader();
