@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { SearchBar } from "@/components/SearchBar";
 import { ResearchLogs } from "@/components/ResearchLogs";
@@ -9,8 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  BookOpen, LogOut, History, Search, Menu, X,
-  FileText, Settings, User, Code,
+  BookOpen, LogOut, History, Search, Menu, X, Code,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Source } from "@/types/research";
@@ -18,7 +17,7 @@ import type { Source } from "@/types/research";
 const DEPTH_LABELS = ["quick", "standard", "deep", "academic", "expert"];
 
 const Index = () => {
-  const { logs, content, sources, isLoading, error, research } = useResearch();
+  const { logs, content, sources, isLoading, isPaused, retryCountdown, error, research } = useResearch();
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -28,6 +27,7 @@ const Index = () => {
   const [viewedContent, setViewedContent] = useState("");
   const [viewedSources, setViewedSources] = useState<Source[]>([]);
   const [isViewingHistory, setIsViewingHistory] = useState(false);
+  const lastQueryRef = useRef("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -41,7 +41,7 @@ const Index = () => {
       const saveToHistory = async () => {
         await supabase.from("research_history").insert({
           user_id: user.id,
-          query: (document.querySelector('input[type="text"]') as HTMLInputElement)?.value || "Research",
+          query: lastQueryRef.current || "Research",
           content,
           sources: sources as any,
         });
@@ -63,6 +63,7 @@ const Index = () => {
     setIsViewingHistory(false);
     setViewedContent("");
     setViewedSources([]);
+    lastQueryRef.current = query;
     research(query, DEPTH_LABELS[depth]);
   }, [research]);
 
@@ -144,7 +145,7 @@ const Index = () => {
 
       {/* User footer */}
       <div className="px-4 py-3 border-t border-sidebar-border flex items-center justify-between">
-        <span className="text-[11px] text-sidebar-foreground/50 font-display truncate">
+        <span className="text-[11px] text-sidebar-foreground/50 font-display truncate max-w-[140px]">
           {user?.email}
         </span>
         <Button
@@ -160,7 +161,7 @@ const Index = () => {
   );
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-[100dvh] bg-background overflow-hidden">
       {/* Desktop Sidebar */}
       {!isMobile && (
         <aside className="w-64 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col">
@@ -182,9 +183,9 @@ const Index = () => {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="px-4 md:px-8 py-4 border-b border-border bg-card">
-          <div className="max-w-[800px] mx-auto flex items-center gap-3">
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <header className="px-3 md:px-8 py-3 md:py-4 border-b border-border bg-card flex-shrink-0">
+          <div className="max-w-[800px] mx-auto flex items-center gap-2 md:gap-3">
             {isMobile && (
               <Button
                 variant="ghost"
@@ -195,17 +196,19 @@ const Index = () => {
                 <Menu className="h-5 w-5" />
               </Button>
             )}
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <SearchBar onSubmit={handleResearch} isLoading={isLoading} />
             </div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-4 md:px-8">
+        <div className="flex-1 overflow-y-auto">
           <ResearchReport
             content={displayContent}
             sources={displaySources}
             isLoading={isLoading && !isViewingHistory}
+            isPaused={isPaused}
+            retryCountdown={retryCountdown}
             error={isViewingHistory ? null : error}
           />
         </div>

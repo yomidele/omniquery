@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { ResearchState, LogEntry, Source } from "@/types/research";
 
 const RESEARCH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/research-agent`;
@@ -9,8 +9,34 @@ export function useResearch() {
     content: "",
     sources: [],
     isLoading: false,
+    isPaused: false,
+    retryCountdown: 0,
     error: null,
   });
+
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup countdown on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);
+
+  const startCountdown = useCallback((seconds: number) => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    setState((prev) => ({ ...prev, isPaused: true, retryCountdown: seconds }));
+    countdownRef.current = setInterval(() => {
+      setState((prev) => {
+        const next = prev.retryCountdown - 1;
+        if (next <= 0) {
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          return { ...prev, retryCountdown: 0 };
+        }
+        return { ...prev, retryCountdown: next };
+      });
+    }, 1000);
+  }, []);
 
   const research = useCallback(async (query: string, depth: string = "standard") => {
     setState({
@@ -18,6 +44,8 @@ export function useResearch() {
       content: "",
       sources: [],
       isLoading: true,
+      isPaused: false,
+      retryCountdown: 0,
       error: null,
     });
 
@@ -92,15 +120,33 @@ export function useResearch() {
                       sources: (data as { sources: Source[] }).sources,
                     }));
                     break;
+                  case "paused":
+                    startCountdown((data as { retryAfter: number }).retryAfter);
+                    break;
+                  case "resumed":
+                    if (countdownRef.current) clearInterval(countdownRef.current);
+                    setState((prev) => ({
+                      ...prev,
+                      isPaused: false,
+                      retryCountdown: 0,
+                    }));
+                    break;
                   case "error":
                     setState((prev) => ({
                       ...prev,
                       error: (data as { message: string }).message,
                       isLoading: false,
+                      isPaused: false,
+                      retryCountdown: 0,
                     }));
                     return;
                   case "done":
-                    setState((prev) => ({ ...prev, isLoading: false }));
+                    setState((prev) => ({
+                      ...prev,
+                      isLoading: false,
+                      isPaused: false,
+                      retryCountdown: 0,
+                    }));
                     return;
                 }
               } catch {
@@ -111,15 +157,17 @@ export function useResearch() {
         }
       }
 
-      setState((prev) => ({ ...prev, isLoading: false }));
+      setState((prev) => ({ ...prev, isLoading: false, isPaused: false, retryCountdown: 0 }));
     } catch (e) {
       setState((prev) => ({
         ...prev,
         error: e instanceof Error ? e.message : "Unknown error",
         isLoading: false,
+        isPaused: false,
+        retryCountdown: 0,
       }));
     }
-  }, []);
+  }, [startCountdown]);
 
   return { ...state, research };
 }

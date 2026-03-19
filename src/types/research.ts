@@ -14,5 +14,7 @@ export interface ResearchState {
   content: string;
   sources: Source[];
   isLoading: boolean;
+  isPaused: boolean;
+  retryCountdown: number;
   error: string | null;
 }
