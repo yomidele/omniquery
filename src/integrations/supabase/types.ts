@@ -47,6 +47,70 @@ export type Database = {
         }
         Relationships: []
       }
+      bookmarks: {
+        Row: {
+          created_at: string
+          id: string
+          research_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          research_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          research_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookmarks_research_id_fkey"
+            columns: ["research_id"]
+            isOneToOne: false
+            referencedRelation: "research_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -71,6 +135,36 @@ export type Database = {
         }
         Relationships: []
       }
+      research_folders: {
+        Row: {
+          folder_id: string
+          research_id: string
+        }
+        Insert: {
+          folder_id: string
+          research_id: string
+        }
+        Update: {
+          folder_id?: string
+          research_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_folders_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_folders_research_id_fkey"
+            columns: ["research_id"]
+            isOneToOne: false
+            referencedRelation: "research_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       research_history: {
         Row: {
           content: string
@@ -94,6 +188,95 @@ export type Database = {
           id?: string
           query?: string
           sources?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
+      research_notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          research_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          research_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          research_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_notes_research_id_fkey"
+            columns: ["research_id"]
+            isOneToOne: false
+            referencedRelation: "research_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_tags: {
+        Row: {
+          research_id: string
+          tag_id: string
+        }
+        Insert: {
+          research_id: string
+          tag_id: string
+        }
+        Update: {
+          research_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_tags_research_id_fkey"
+            columns: ["research_id"]
+            isOneToOne: false
+            referencedRelation: "research_history"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tags: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
           user_id?: string
         }
         Relationships: []
