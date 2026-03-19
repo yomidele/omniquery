@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface ResearchRequest {
   query: string;
-  depth?: string; // quick | standard | deep | academic | expert
+  depth?: string;
 }
 
 interface LogEntry {
@@ -65,7 +65,6 @@ Bullet points of important discoveries.
 Numbered list of sources used.`;
   }
 
-  // deep, academic, expert all get the full framework
   return base + `\nYour response MUST follow this exact structure:
 
 # [Concise Research Title]
@@ -120,72 +119,97 @@ ${depth === "expert" ? "IMPORTANT: This is an EXPERT-LEVEL analysis. Go extremel
 ${depth === "academic" ? "IMPORTANT: This is an ACADEMIC-LEVEL analysis. Structure the report like an academic paper with rigorous analysis, proper citations, methodology discussion, and literature review style coverage." : ""}`;
 }
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 60_000; // 60 seconds for TPM rate limits
+
+async function callLLMWithRetry(
+  systemPrompt: string,
+  userPrompt: string,
+  apiKey: string,
+  model: string,
+  send: (event: string, data: unknown) => void,
+  log: (step: string, status: LogEntry["status"], detail?: string) => void,
+  provider: "openai" | "groq",
+  groqKey?: string,
+): Promise<ReadableStream<Uint8Array>> {
+  const baseUrl = provider === "openai"
+    ? "https://api.openai.com/v1/chat/completions"
+    : "https://api.groq.com/openai/v1/chat/completions";
+  const key = provider === "openai" ? apiKey : groqKey!;
+  const modelName = provider === "openai" ? model : "llama-3.3-70b-versatile";
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const label = provider === "openai" ? "Generating research report (OpenAI)" : "Generating research report (Groq)";
+    if (attempt > 0) {
+      log(label, "running", `Retry ${attempt}/${MAX_RETRIES} after rate limit`);
+    } else {
+      log(label, "running");
+    }
+
+    const resp = await fetch(baseUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: modelName,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        stream: true,
+      }),
+    });
+
+    if (resp.ok && resp.body) {
+      log(label, "done");
+      return resp.body;
+    }
+
+    if (resp.status === 429 && attempt < MAX_RETRIES) {
+      const retryAfter = parseInt(resp.headers.get("retry-after") || "60", 10);
+      const waitSeconds = Math.min(retryAfter, 120);
+      log(label, "running", `Rate limited. Waiting ${waitSeconds}s...`);
+      send("paused", { retryAfter: waitSeconds });
+      await new Promise((r) => setTimeout(r, waitSeconds * 1000));
+      send("resumed", {});
+      continue;
+    }
+
+    const errText = await resp.text();
+    throw new Error(`${provider} error ${resp.status}: ${errText}`);
+  }
+
+  throw new Error(`${provider} failed after ${MAX_RETRIES} retries`);
+}
+
 async function callLLMWithFallback(
   systemPrompt: string,
   userPrompt: string,
   openaiKey: string,
   groqKey: string | undefined,
   model: string,
+  send: (event: string, data: unknown) => void,
   log: (step: string, status: LogEntry["status"], detail?: string) => void
 ): Promise<ReadableStream<Uint8Array>> {
-  log("Generating research report (OpenAI)", "running");
   try {
-    const openaiResp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        stream: true,
-      }),
-    });
-
-    if (openaiResp.ok && openaiResp.body) {
-      log("Generating research report (OpenAI)", "done");
-      return openaiResp.body;
-    }
-
-    const errText = await openaiResp.text();
-    throw new Error(`OpenAI error ${openaiResp.status}: ${errText}`);
+    return await callLLMWithRetry(systemPrompt, userPrompt, openaiKey, model, send, log, "openai");
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : "unknown";
     log("Generating research report (OpenAI)", "error", errMsg);
 
     if (!groqKey) {
-      throw new Error(`OpenAI failed and GROQ_API_KEY not configured. OpenAI error: ${errMsg}`);
+      throw new Error(`OpenAI failed and GROQ_API_KEY not configured. Error: ${errMsg}`);
     }
 
     log("Falling back to Groq AI", "running");
-    const groqResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${groqKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        stream: true,
-      }),
-    });
-
-    if (!groqResp.ok || !groqResp.body) {
-      const groqErr = await groqResp.text();
-      log("Falling back to Groq AI", "error", groqErr);
-      throw new Error(`Both OpenAI and Groq failed. Groq error: ${groqErr}`);
+    try {
+      return await callLLMWithRetry(systemPrompt, userPrompt, openaiKey, "llama-3.3-70b-versatile", send, log, "groq", groqKey);
+    } catch (groqErr) {
+      log("Falling back to Groq AI", "error", groqErr instanceof Error ? groqErr.message : "unknown");
+      throw groqErr;
     }
-
-    log("Falling back to Groq AI", "done");
-    return groqResp.body;
   }
 }
 
@@ -391,7 +415,7 @@ ${allContent || "No content was found. Please provide a general answer based on 
 Source URLs:
 ${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") : "No sources available"}`;
 
-          const llmStream = await callLLMWithFallback(systemPrompt, userPrompt, OPENAI_API_KEY, GROQ_API_KEY, config.model, log);
+          const llmStream = await callLLMWithFallback(systemPrompt, userPrompt, OPENAI_API_KEY, GROQ_API_KEY, config.model, send, log);
 
           // Stream the LLM response
           const reader = llmStream.getReader();
