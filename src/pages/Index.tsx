@@ -17,7 +17,7 @@ import type { Source } from "@/types/research";
 const DEPTH_LABELS = ["quick", "standard", "deep", "academic", "expert"];
 
 const Index = () => {
-  const { logs, content, sources, isLoading, isPaused, retryCountdown, error, research } = useResearch();
+  const { logs, content, sources, isLoading, isPaused, retryCountdown, error, hasMore, research, continueResearch } = useResearch();
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
