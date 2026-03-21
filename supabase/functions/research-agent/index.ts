@@ -408,7 +408,33 @@ serve(async (req) => {
 
           const systemPrompt = getSystemPrompt(depthKey);
 
-          const userPrompt = `Research Question: ${query}
+          let userPrompt: string;
+          const isCont = batchIndex > 0 && previousContent;
+
+          if (isCont) {
+            // Truncate previous content to fit within token budget (~last 2000 chars as context)
+            const contextWindow = previousContent.length > 2000 ? previousContent.slice(-2000) : previousContent;
+            userPrompt = `Research Question: ${query}
+
+Research Depth Level: ${depthKey.toUpperCase()}
+Batch Index: ${batchIndex}
+
+IMPORTANT: This is a CONTINUATION of previous research. Continue EXACTLY where the previous content stopped. Do NOT repeat any previously generated content. Maintain the same style, tone, and formatting.
+
+Previous research context (last section):
+---
+${contextWindow}
+---
+
+Continue the research from where it left off. Generate the next section of the report.
+
+Available Sources and Content:
+${allContent || "Use the context from previous batches to continue."}
+
+Source URLs:
+${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") : "No new sources"}`;
+          } else {
+            userPrompt = `Research Question: ${query}
 
 Research Depth Level: ${depthKey.toUpperCase()}
 
@@ -417,6 +443,7 @@ ${allContent || "No content was found. Please provide a general answer based on 
 
 Source URLs:
 ${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") : "No sources available"}`;
+          }
 
           const llmStream = await callLLMWithFallback(systemPrompt, userPrompt, OPENAI_API_KEY, GROQ_API_KEY, config.model, send, log);
 
