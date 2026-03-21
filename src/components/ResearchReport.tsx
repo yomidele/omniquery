@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import type { Source } from "@/types/research";
-import { Download, ClipboardCopy, Pause, Timer } from "lucide-react";
+import { Download, ClipboardCopy, Pause, Timer, PlayCircle } from "lucide-react";
 import { LinkPreviewCard } from "@/components/LinkPreviewCard";
 import { MermaidDiagram } from "@/components/MermaidDiagram";
 import { LinkViewer } from "@/components/LinkViewer";
