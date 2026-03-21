@@ -17,4 +17,6 @@ export interface ResearchState {
   isPaused: boolean;
   retryCountdown: number;
   error: string | null;
+  hasMore: boolean;
+  batchIndex: number;
 }

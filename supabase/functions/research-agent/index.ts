@@ -9,6 +9,8 @@ const corsHeaders = {
 interface ResearchRequest {
   query: string;
   depth?: string;
+  previousContent?: string;
+  batchIndex?: number;
 }
 
 interface LogEntry {
@@ -219,7 +221,7 @@ serve(async (req) => {
   }
 
   try {
-    const { query, depth = "standard" } = (await req.json()) as ResearchRequest;
+    const { query, depth = "standard", previousContent = "", batchIndex = 0 } = (await req.json()) as ResearchRequest;
     if (!query) {
       return new Response(JSON.stringify({ error: "query is required" }), {
         status: 400,
@@ -306,7 +308,8 @@ serve(async (req) => {
 
           // Step 2: Search with Tavily if needed
           let tavilyUrls: { url: string; title: string }[] = [];
-          const needsWebSearch = chromaResults.length < Math.min(3, config.maxSources);
+          const isContinuation = batchIndex > 0 && previousContent;
+          const needsWebSearch = !isContinuation && chromaResults.length < Math.min(3, config.maxSources);
           if (needsWebSearch) {
             log("Searching with Tavily", "running");
             try {
@@ -405,7 +408,33 @@ serve(async (req) => {
 
           const systemPrompt = getSystemPrompt(depthKey);
 
-          const userPrompt = `Research Question: ${query}
+          let userPrompt: string;
+          const isCont = batchIndex > 0 && previousContent;
+
+          if (isCont) {
+            // Truncate previous content to fit within token budget (~last 2000 chars as context)
+            const contextWindow = previousContent.length > 2000 ? previousContent.slice(-2000) : previousContent;
+            userPrompt = `Research Question: ${query}
+
+Research Depth Level: ${depthKey.toUpperCase()}
+Batch Index: ${batchIndex}
+
+IMPORTANT: This is a CONTINUATION of previous research. Continue EXACTLY where the previous content stopped. Do NOT repeat any previously generated content. Maintain the same style, tone, and formatting.
+
+Previous research context (last section):
+---
+${contextWindow}
+---
+
+Continue the research from where it left off. Generate the next section of the report.
+
+Available Sources and Content:
+${allContent || "Use the context from previous batches to continue."}
+
+Source URLs:
+${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") : "No new sources"}`;
+          } else {
+            userPrompt = `Research Question: ${query}
 
 Research Depth Level: ${depthKey.toUpperCase()}
 
@@ -414,6 +443,7 @@ ${allContent || "No content was found. Please provide a general answer based on 
 
 Source URLs:
 ${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") : "No sources available"}`;
+          }
 
           const llmStream = await callLLMWithFallback(systemPrompt, userPrompt, OPENAI_API_KEY, GROQ_API_KEY, config.model, send, log);
 
@@ -456,6 +486,10 @@ ${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") 
                 .map((r) => ({ url: r.source, title: r.source })),
             ],
           });
+          // Determine if there's more to generate based on depth
+          const maxBatches = depthKey === "quick" ? 1 : depthKey === "standard" ? 2 : depthKey === "deep" ? 3 : depthKey === "academic" ? 4 : 5;
+          const hasMore = batchIndex + 1 < maxBatches;
+          send("batch_info", { batchIndex, hasMore });
 
           send("done", {});
         } catch (e) {
