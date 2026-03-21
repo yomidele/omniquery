@@ -486,6 +486,10 @@ ${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") 
                 .map((r) => ({ url: r.source, title: r.source })),
             ],
           });
+          // Determine if there's more to generate based on depth
+          const maxBatches = depthKey === "quick" ? 1 : depthKey === "standard" ? 2 : depthKey === "deep" ? 3 : depthKey === "academic" ? 4 : 5;
+          const hasMore = batchIndex + 1 < maxBatches;
+          send("batch_info", { batchIndex, hasMore });
 
           send("done", {});
         } catch (e) {
