@@ -210,6 +210,8 @@ const Index = () => {
             isPaused={isPaused}
             retryCountdown={retryCountdown}
             error={isViewingHistory ? null : error}
+            hasMore={isViewingHistory ? false : hasMore}
+            onContinue={continueResearch}
           />
         </div>
       </main>
