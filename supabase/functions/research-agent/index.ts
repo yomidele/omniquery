@@ -221,7 +221,7 @@ serve(async (req) => {
   }
 
   try {
-    const { query, depth = "standard" } = (await req.json()) as ResearchRequest;
+    const { query, depth = "standard", previousContent = "", batchIndex = 0 } = (await req.json()) as ResearchRequest;
     if (!query) {
       return new Response(JSON.stringify({ error: "query is required" }), {
         status: 400,
