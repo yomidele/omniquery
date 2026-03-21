@@ -9,6 +9,8 @@ const corsHeaders = {
 interface ResearchRequest {
   query: string;
   depth?: string;
+  previousContent?: string;
+  batchIndex?: number;
 }
 
 interface LogEntry {
