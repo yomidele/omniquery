@@ -26,15 +26,6 @@ const Login = () => {
     }
   };
 
-  const handleGoogle = async () => {
-    const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (error) {
-      toast({ title: "Google sign-in failed", description: String(error), variant: "destructive" });
-    }
-  };
-
   return (
     <div className="min-h-screen bg-primary flex flex-col items-center justify-center px-4">
       {/* Brand */}
