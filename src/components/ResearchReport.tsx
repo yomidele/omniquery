@@ -18,9 +18,11 @@ interface ResearchReportProps {
   isPaused: boolean;
   retryCountdown: number;
   error: string | null;
+  hasMore: boolean;
+  onContinue?: () => void;
 }
 
-export function ResearchReport({ content, sources, isLoading, isPaused, retryCountdown, error }: ResearchReportProps) {
+export function ResearchReport({ content, sources, isLoading, isPaused, retryCountdown, error, hasMore, onContinue }: ResearchReportProps) {
   const reportRef = useRef<HTMLDivElement>(null);
   const [viewerUrl, setViewerUrl] = useState<{ url: string; title?: string } | null>(null);
 
