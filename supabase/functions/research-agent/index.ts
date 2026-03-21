@@ -308,7 +308,8 @@ serve(async (req) => {
 
           // Step 2: Search with Tavily if needed
           let tavilyUrls: { url: string; title: string }[] = [];
-          const needsWebSearch = chromaResults.length < Math.min(3, config.maxSources);
+          const isContinuation = batchIndex > 0 && previousContent;
+          const needsWebSearch = !isContinuation && chromaResults.length < Math.min(3, config.maxSources);
           if (needsWebSearch) {
             log("Searching with Tavily", "running");
             try {
