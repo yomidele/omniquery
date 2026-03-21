@@ -160,6 +160,7 @@ async function callLLMWithRetry(
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
+        max_tokens: 4500,
         stream: true,
       }),
     });
