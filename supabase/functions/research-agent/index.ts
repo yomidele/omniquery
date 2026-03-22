@@ -475,7 +475,7 @@ Source URLs:
 ${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") : "No sources available"}`;
           }
 
-          const llmStream = await callLLMWithFallback(systemPrompt, userPrompt, OPENAI_API_KEY, GROQ_API_KEY, config.model, send, log);
+          const llmStream = await callLLMRoundRobin(systemPrompt, userPrompt, send, log);
 
           // Stream the LLM response
           const reader = llmStream.getReader();
