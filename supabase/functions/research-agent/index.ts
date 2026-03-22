@@ -269,7 +269,8 @@ serve(async (req) => {
     const CHROMA_API_KEY = Deno.env.get("CHROMA_API_KEY");
     const CHROMA_ENDPOINT = Deno.env.get("CHROMA_ENDPOINT");
 
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+    // OpenAI key is now optional (used for embeddings only, not for main LLM)
+    // Main LLM uses round-robin: Gemini (LOVABLE_API_KEY), Groq, Together AI
     if (!TAVILY_API_KEY) throw new Error("TAVILY_API_KEY not configured");
     if (!FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY not configured");
 
