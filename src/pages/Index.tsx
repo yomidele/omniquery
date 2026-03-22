@@ -66,6 +66,7 @@ const Index = () => {
     setViewedContent("");
     setViewedSources([]);
     lastQueryRef.current = query;
+    hasSavedRef.current = false;
     research(query, DEPTH_LABELS[depth]);
   }, [research]);
 

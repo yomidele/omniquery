@@ -19,6 +19,8 @@ export function useResearch() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastQueryRef = useRef("");
   const lastDepthRef = useRef("standard");
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     return () => {
