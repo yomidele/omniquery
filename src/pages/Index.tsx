@@ -28,6 +28,7 @@ const Index = () => {
   const [viewedSources, setViewedSources] = useState<Source[]>([]);
   const [isViewingHistory, setIsViewingHistory] = useState(false);
   const lastQueryRef = useRef("");
+  const hasSavedRef = useRef(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
