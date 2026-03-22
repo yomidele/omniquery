@@ -28,6 +28,7 @@ const Index = () => {
   const [viewedSources, setViewedSources] = useState<Source[]>([]);
   const [isViewingHistory, setIsViewingHistory] = useState(false);
   const lastQueryRef = useRef("");
+  const hasSavedRef = useRef(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -35,9 +36,10 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Save completed research to history
+  // Save completed research to history (only once per research, when fully done with no more batches)
   useEffect(() => {
-    if (!isLoading && content && user && !isViewingHistory) {
+    if (!isLoading && content && user && !isViewingHistory && !hasMore && !hasSavedRef.current) {
+      hasSavedRef.current = true;
       const saveToHistory = async () => {
         await supabase.from("research_history").insert({
           user_id: user.id,
@@ -49,7 +51,7 @@ const Index = () => {
       };
       saveToHistory();
     }
-  }, [isLoading, content, user]);
+  }, [isLoading, content, user, hasMore, isViewingHistory]);
 
   const handleHistorySelect = useCallback((item: { query: string; content: string; sources: Source[] }) => {
     setViewedContent(item.content);
@@ -64,6 +66,7 @@ const Index = () => {
     setViewedContent("");
     setViewedSources([]);
     lastQueryRef.current = query;
+    hasSavedRef.current = false;
     research(query, DEPTH_LABELS[depth]);
   }, [research]);
 

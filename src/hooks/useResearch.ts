@@ -19,6 +19,8 @@ export function useResearch() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastQueryRef = useRef("");
   const lastDepthRef = useRef("standard");
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     return () => {
@@ -200,12 +202,12 @@ export function useResearch() {
       ...prev,
       isLoading: true,
       error: null,
-      logs: [],
+      hasMore: false,
     }));
-    const currentContent = state.content;
-    const nextBatch = state.batchIndex + 1;
+    const currentContent = stateRef.current.content;
+    const nextBatch = stateRef.current.batchIndex + 1;
     await doRequest(lastQueryRef.current, lastDepthRef.current, currentContent, nextBatch, true);
-  }, [doRequest, state.content, state.batchIndex]);
+  }, [doRequest]);
 
   return { ...state, research, continueResearch, lastQuery: lastQueryRef.current };
 }

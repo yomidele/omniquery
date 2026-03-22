@@ -201,6 +201,15 @@ export function ResearchReport({ content, sources, isLoading, isPaused, retryCou
           </div>
         )}
 
+        {isLoading && content && !isPaused && (
+          <div className="mt-6 flex justify-center">
+            <Button disabled className="gap-2 font-display opacity-70">
+              <span className="inline-block h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              Generating…
+            </Button>
+          </div>
+        )}
+
         {sources.length > 0 && !isLoading && (
           <div className="mt-8 md:mt-10 pt-4 md:pt-6 border-t border-border">
             <h3 className="text-sm font-semibold text-muted-foreground font-display uppercase tracking-wide mb-3">
