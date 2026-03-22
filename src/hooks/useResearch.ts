@@ -200,12 +200,12 @@ export function useResearch() {
       ...prev,
       isLoading: true,
       error: null,
-      logs: [],
+      hasMore: false,
     }));
-    const currentContent = state.content;
-    const nextBatch = state.batchIndex + 1;
+    const currentContent = stateRef.current.content;
+    const nextBatch = stateRef.current.batchIndex + 1;
     await doRequest(lastQueryRef.current, lastDepthRef.current, currentContent, nextBatch, true);
-  }, [doRequest, state.content, state.batchIndex]);
+  }, [doRequest]);
 
   return { ...state, research, continueResearch, lastQuery: lastQueryRef.current };
 }
