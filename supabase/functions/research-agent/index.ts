@@ -121,99 +121,128 @@ ${depth === "expert" ? "IMPORTANT: This is an EXPERT-LEVEL analysis. Go extremel
 ${depth === "academic" ? "IMPORTANT: This is an ACADEMIC-LEVEL analysis. Structure the report like an academic paper with rigorous analysis, proper citations, methodology discussion, and literature review style coverage." : ""}`;
 }
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 60_000; // 60 seconds for TPM rate limits
+// --- Round-Robin Provider System ---
 
-async function callLLMWithRetry(
+interface Provider {
+  name: string;
+  url: string;
+  keyEnv: string;
+  model: string;
+}
+
+const PROVIDERS: Provider[] = [
+  {
+    name: "Gemini Flash",
+    url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+    keyEnv: "LOVABLE_API_KEY",
+    model: "google/gemini-2.5-flash",
+  },
+  {
+    name: "Groq",
+    url: "https://api.groq.com/openai/v1/chat/completions",
+    keyEnv: "GROQ_API_KEY",
+    model: "llama-3.3-70b-versatile",
+  },
+  {
+    name: "Together AI",
+    url: "https://api.together.xyz/v1/chat/completions",
+    keyEnv: "TOGETHER_API_KEY",
+    model: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+  },
+];
+
+// Simple round-robin counter (resets per cold start, which is fine)
+let roundRobinIndex = 0;
+
+const MAX_RETRIES_PER_PROVIDER = 1;
+
+async function callProvider(
+  provider: Provider,
+  apiKey: string,
   systemPrompt: string,
   userPrompt: string,
-  apiKey: string,
-  model: string,
   send: (event: string, data: unknown) => void,
   log: (step: string, status: LogEntry["status"], detail?: string) => void,
-  provider: "openai" | "groq",
-  groqKey?: string,
 ): Promise<ReadableStream<Uint8Array>> {
-  const baseUrl = provider === "openai"
-    ? "https://api.openai.com/v1/chat/completions"
-    : "https://api.groq.com/openai/v1/chat/completions";
-  const key = provider === "openai" ? apiKey : groqKey!;
-  const modelName = provider === "openai" ? model : "llama-3.3-70b-versatile";
+  const label = `Generating report (${provider.name})`;
+  log(label, "running");
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const label = provider === "openai" ? "Generating research report (OpenAI)" : "Generating research report (Groq)";
-    if (attempt > 0) {
-      log(label, "running", `Retry ${attempt}/${MAX_RETRIES} after rate limit`);
-    } else {
-      log(label, "running");
-    }
+  const resp = await fetch(provider.url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: provider.model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: 4500,
+      stream: true,
+    }),
+  });
 
-    const resp = await fetch(baseUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: modelName,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        max_tokens: 4500,
-        stream: true,
-      }),
-    });
+  if (resp.ok && resp.body) {
+    log(label, "done");
+    return resp.body;
+  }
 
-    if (resp.ok && resp.body) {
-      log(label, "done");
-      return resp.body;
-    }
+  if (resp.status === 429) {
+    const retryAfter = parseInt(resp.headers.get("retry-after") || "30", 10);
+    const errText = await resp.text();
+    throw new Error(`RATE_LIMIT:${retryAfter}:${provider.name}: ${errText}`);
+  }
 
-    if (resp.status === 429 && attempt < MAX_RETRIES) {
-      const retryAfter = parseInt(resp.headers.get("retry-after") || "60", 10);
-      const waitSeconds = Math.min(retryAfter, 120);
-      log(label, "running", `Rate limited. Waiting ${waitSeconds}s...`);
-      send("paused", { retryAfter: waitSeconds });
-      await new Promise((r) => setTimeout(r, waitSeconds * 1000));
-      send("resumed", {});
+  const errText = await resp.text();
+  throw new Error(`${provider.name} error ${resp.status}: ${errText}`);
+}
+
+async function callLLMRoundRobin(
+  systemPrompt: string,
+  userPrompt: string,
+  send: (event: string, data: unknown) => void,
+  log: (step: string, status: LogEntry["status"], detail?: string) => void,
+): Promise<ReadableStream<Uint8Array>> {
+  const startIdx = roundRobinIndex;
+  // Advance counter for next request
+  roundRobinIndex = (roundRobinIndex + 1) % PROVIDERS.length;
+
+  const errors: string[] = [];
+
+  // Try each provider starting from the round-robin index
+  for (let i = 0; i < PROVIDERS.length; i++) {
+    const idx = (startIdx + i) % PROVIDERS.length;
+    const provider = PROVIDERS[idx];
+    const apiKey = Deno.env.get(provider.keyEnv);
+
+    if (!apiKey) {
+      errors.push(`${provider.name}: key not configured`);
       continue;
     }
 
-    const errText = await resp.text();
-    throw new Error(`${provider} error ${resp.status}: ${errText}`);
-  }
-
-  throw new Error(`${provider} failed after ${MAX_RETRIES} retries`);
-}
-
-async function callLLMWithFallback(
-  systemPrompt: string,
-  userPrompt: string,
-  openaiKey: string,
-  groqKey: string | undefined,
-  model: string,
-  send: (event: string, data: unknown) => void,
-  log: (step: string, status: LogEntry["status"], detail?: string) => void
-): Promise<ReadableStream<Uint8Array>> {
-  try {
-    return await callLLMWithRetry(systemPrompt, userPrompt, openaiKey, model, send, log, "openai");
-  } catch (e) {
-    const errMsg = e instanceof Error ? e.message : "unknown";
-    log("Generating research report (OpenAI)", "error", errMsg);
-
-    if (!groqKey) {
-      throw new Error(`OpenAI failed and GROQ_API_KEY not configured. Error: ${errMsg}`);
-    }
-
-    log("Falling back to Groq AI", "running");
     try {
-      return await callLLMWithRetry(systemPrompt, userPrompt, openaiKey, "llama-3.3-70b-versatile", send, log, "groq", groqKey);
-    } catch (groqErr) {
-      log("Falling back to Groq AI", "error", groqErr instanceof Error ? groqErr.message : "unknown");
-      throw groqErr;
+      const stream = await callProvider(provider, apiKey, systemPrompt, userPrompt, send, log);
+      return stream;
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : "unknown";
+      errors.push(`${provider.name}: ${errMsg}`);
+      log(`Generating report (${provider.name})`, "error", errMsg);
+
+      // If rate limited, notify client and try next provider
+      if (errMsg.startsWith("RATE_LIMIT:")) {
+        const parts = errMsg.split(":");
+        const waitSec = parseInt(parts[1], 10) || 30;
+        send("paused", { retryAfter: Math.min(waitSec, 5) }); // brief pause indicator
+        send("resumed", {});
+        log(`Skipping ${provider.name}, trying next provider`, "running");
+      }
     }
   }
+
+  // All providers failed
+  throw new Error(`All AI providers failed. ${errors.join(" | ")}`);
 }
 
 serve(async (req) => {
@@ -240,7 +269,8 @@ serve(async (req) => {
     const CHROMA_API_KEY = Deno.env.get("CHROMA_API_KEY");
     const CHROMA_ENDPOINT = Deno.env.get("CHROMA_ENDPOINT");
 
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+    // OpenAI key is now optional (used for embeddings only, not for main LLM)
+    // Main LLM uses round-robin: Gemini (LOVABLE_API_KEY), Groq, Together AI
     if (!TAVILY_API_KEY) throw new Error("TAVILY_API_KEY not configured");
     if (!FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY not configured");
 
@@ -446,7 +476,7 @@ Source URLs:
 ${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") : "No sources available"}`;
           }
 
-          const llmStream = await callLLMWithFallback(systemPrompt, userPrompt, OPENAI_API_KEY, GROQ_API_KEY, config.model, send, log);
+          const llmStream = await callLLMRoundRobin(systemPrompt, userPrompt, send, log);
 
           // Stream the LLM response
           const reader = llmStream.getReader();
