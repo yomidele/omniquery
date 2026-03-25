@@ -24,6 +24,13 @@
 </head>
 
   <body>
+    <script>
+      (function() {
+        const storedTheme = localStorage.getItem('omniquery-theme');
+        const theme = storedTheme === 'dark' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -6,61 +6,68 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98.4%;
-    --foreground: 215 25% 27%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 215 25% 27%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 27%;
-
-    --primary: 222 47% 11%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
-
-    --success: 160 84% 39%;
-    --success-foreground: 0 0% 100%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 60%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 213 31% 91%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 217 91% 60%;
+    --transition-duration: 200ms;
+    --radius: 16px;
+    --space-1: 8px;
+    --space-2: 16px;
+    --space-3: 24px;
+    --space-4: 32px;
+    --max-content: 1100px;
+    --max-reading: 780px;
 
     --font-display: 'Inter', sans-serif;
     --font-body: 'Merriweather', serif;
+
+    --bg: 255 255 255;
+    --surface: 249 250 251;
+    --text-primary: 17 17 17;
+    --text-secondary: 85 85 85;
+    --border: 214 232 255;
+    --accent: 59 130 246;
+    --accent-foreground: 255 255 255;
+    --muted: 148 163 184;
+  }
+
+  [data-theme='dark'] {
+    --bg: 15 17 21;
+    --surface: 26 29 35;
+    --text-primary: 234 234 234;
+    --text-secondary: 161 161 170;
+    --border: 68 75 90;
+    --accent: 96 165 250;
+    --accent-foreground: 15 23 42;
+    --muted: 148 163 184;
+  }
+
+  :root {
+    --background: var(--bg);
+    --foreground: var(--text-primary);
+    --card: var(--surface);
+    --card-foreground: var(--text-primary);
+    --border: var(--border);
+    --accent: var(--accent);
+    --accent-foreground: var(--accent-foreground);
+    --muted-foreground: var(--text-secondary);
+    --input: var(--surface);
+    --ring: var(--accent);
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
+  html, body {
+    background-color: rgb(var(--background));
+    color: rgb(var(--foreground));
+    font-family: var(--font-display);
+    min-height: 100%;
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-display);
+    margin: 0;
+    transition: background-color var(--transition-duration), color var(--transition-duration);
+  }
+
+  * {
+    box-sizing: border-box;
   }
 
   .font-body {
@@ -88,11 +95,42 @@
   .research-log-item.success {
     @apply border-l-success;
   }
+
+  .omni-skeleton {
+    background: linear-gradient(90deg, rgba(var(--surface),1) 8%, rgba(var(--border),1) 18%, rgba(var(--surface),1) 33%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  .omni-card {
+    background: rgb(var(--surface));
+    border: 1px solid rgba(var(--border), 0.6);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  }
+
+  .omni-heading {
+    color: rgb(var(--foreground));
+  }
+
+  .omni-subtext {
+    color: rgb(var(--muted-foreground));
+  }
+
+  .omni-cta {
+    background: rgb(var(--accent));
+    color: rgb(var(--accent-foreground));
+  }
 }
 
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 .animate-pulse-dot {
