@@ -1,52 +1,73 @@
 import { useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
+import { sanitizeMermaid } from "@/lib/sanitizeMermaid";
 
 mermaid.initialize({
   startOnLoad: false,
   theme: "neutral",
   securityLevel: "loose",
   fontFamily: "Inter, sans-serif",
+  suppressErrorRendering: true,
 });
 
 let counter = 0;
 
-const VALID_STARTS = [
-  "graph ", "graph\n", "flowchart ", "flowchart\n",
-  "sequenceDiagram", "classDiagram", "stateDiagram",
-  "erDiagram", "gantt", "pie", "gitGraph", "mindmap",
-  "timeline", "journey", "quadrantChart", "xychart",
-  "sankey", "block-beta",
-];
-
-function isValidMermaidSyntax(chart: string): boolean {
-  const trimmed = chart.trim();
-  return VALID_STARTS.some((s) => trimmed.startsWith(s));
-}
-
 export function MermaidDiagram({ chart }: { chart: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [error, setError] = useState(false);
+  const idRef = useRef(`mermaid-${++counter}`);
 
   useEffect(() => {
     if (!ref.current) return;
-    if (!isValidMermaidSyntax(chart)) {
+
+    const clean = sanitizeMermaid(chart);
+    if (!clean) {
       setError(true);
       return;
     }
-    const id = `mermaid-${++counter}`;
-    mermaid
-      .render(id, chart)
-      .then(({ svg }) => {
-        if (ref.current) ref.current.innerHTML = svg;
-      })
-      .catch(() => setError(true));
+
+    let cancelled = false;
+    const id = idRef.current;
+
+    (async () => {
+      try {
+        // Validate first — this avoids mermaid injecting error elements
+        const valid = await mermaid.parse(clean, { suppressErrors: true });
+        if (!valid || cancelled) {
+          if (!cancelled) setError(true);
+          return;
+        }
+
+        const { svg } = await mermaid.render(id, clean);
+        if (!cancelled && ref.current) {
+          ref.current.innerHTML = svg;
+          setError(false);
+        }
+      } catch (err) {
+        console.debug("[MermaidDiagram] Render failed:", err);
+        if (!cancelled) {
+          setError(true);
+          // Clean up any error elements mermaid injected into the body
+          const errorEl = document.getElementById("d" + id);
+          if (errorEl) errorEl.remove();
+          const errorContainer = document.querySelector(`[id="${id}"]`);
+          if (errorContainer && !ref.current?.contains(errorContainer)) {
+            errorContainer.remove();
+          }
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [chart]);
 
   if (error) {
     return (
-      <pre className="bg-muted rounded-lg p-4 text-xs overflow-x-auto font-mono text-foreground">
-        <code>{chart}</code>
-      </pre>
+      <div className="bg-muted rounded-lg p-4 text-sm text-muted-foreground font-display">
+        Mermaid diagram could not be rendered. Content sanitized.
+      </div>
     );
   }
 

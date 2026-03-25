@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Source } from "@/types/research";
+import type { ResearchType } from "@/components/ResearchTypeSelector";
 
 const DEPTH_LABELS = ["quick", "standard", "deep", "academic", "expert"];
 
@@ -61,13 +62,13 @@ const Index = () => {
     setSidebarOpen(false);
   }, []);
 
-  const handleResearch = useCallback((query: string, depth: number) => {
+  const handleResearch = useCallback((query: string, depth: number, researchType: ResearchType) => {
     setIsViewingHistory(false);
     setViewedContent("");
     setViewedSources([]);
     lastQueryRef.current = query;
     hasSavedRef.current = false;
-    research(query, DEPTH_LABELS[depth]);
+    research(query, DEPTH_LABELS[depth], researchType);
   }, [research]);
 
   const displayContent = isViewingHistory ? viewedContent : content;

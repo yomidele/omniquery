@@ -9,6 +9,7 @@ const corsHeaders = {
 interface ResearchRequest {
   query: string;
   depth?: string;
+  researchType?: string;
   previousContent?: string;
   batchIndex?: number;
 }
@@ -31,10 +32,56 @@ const DEPTH_CONFIG: Record<string, { maxSources: number; maxContent: number; mod
   expert:   { maxSources: 12, maxContent: 8000, model: "gpt-4o-mini" },
 };
 
-function getSystemPrompt(depth: string): string {
+const RESEARCH_TYPE_STRUCTURES: Record<string, string> = {
+  undergraduate: `Structure the report as an Undergraduate Project Work with these sections:
+- Title Page (generate a proper academic title)
+- Abstract (150–300 words)
+- Introduction (background, problem statement, objectives)
+- Literature Review (review relevant works, identify gaps)
+- Methodology (approach, tools, techniques)
+- Results / Findings (present data, tables, charts)
+- Discussion (interpret results, compare with literature)
+- Conclusion & Recommendations
+- References (list all cited sources)
+- Appendices (optional supplementary material)`,
+
+  masters: `Structure the report as a Master's Thesis with these sections:
+- Title Page (generate a proper academic title)
+- Abstract (250–500 words)
+- Introduction (context, research questions, significance)
+- Literature Review / Theoretical Framework (comprehensive review, theoretical basis)
+- Methodology (research design, data collection, analysis methods)
+- Results (detailed findings with supporting evidence)
+- Discussion (interpretation, implications, limitations)
+- Conclusion & Recommendations (key contributions, future research directions)
+- References (comprehensive bibliography)
+- Appendices (data tables, instruments, supplementary analysis)`,
+
+  phd: `Structure the report as a PhD Dissertation with these sections:
+- Title Page (generate a formal dissertation title)
+- Abstract (350–500 words)
+- Acknowledgements
+- Table of Contents / List of Figures / Tables
+- Introduction (research problem, questions, scope, significance, structure overview)
+- Literature Review / Theoretical Framework (exhaustive review, conceptual framework, research gaps)
+- Methodology / Research Design (philosophical stance, approach, methods, validity, ethics)
+- Results / Findings (multi-part if needed, with thorough data presentation)
+- Discussion / Interpretation (synthesis with literature, theoretical contributions, practical implications)
+- Conclusion / Contributions to Knowledge (original contributions, limitations, future research agenda)
+- References (extensive bibliography)
+- Appendices (raw data, instruments, ethical approvals, supplementary analyses)`,
+
+  general: `Structure as a standard research report:
+- Title / Topic Overview
+- Background / Context
+- Key Findings / Summary (organized with clear subheadings)
+- References`,
+};
+
+function getSystemPrompt(depth: string, researchType: string = "general"): string {
   const base = `You are OmniQuery, a professional AI Research Engine. Generate a comprehensive, well-structured research report in Markdown format.
 
-IMPORTANT: Only use information from the provided sources. Cite sources inline where relevant. Use proper Markdown formatting with headings, bullet points, tables, and structured content.
+IMPORTANT: Only use information from the provided sources. Cite sources inline where relevant. Use proper Markdown formatting with headings, bullet points, tables, and structured content. Write in formal academic language.
 
 When a topic involves processes, systems, or workflows, include Mermaid.js diagrams using fenced code blocks with the language "mermaid". Example:
 
@@ -45,80 +92,30 @@ graph TD
 \`\`\`
 `;
 
+  const structurePrompt = RESEARCH_TYPE_STRUCTURES[researchType] || RESEARCH_TYPE_STRUCTURES.general;
+
   if (depth === "quick") {
-    return base + `\nProvide a concise answer with:
-# Title
-## Summary
-Brief 2-3 paragraph answer with key points.
-## Sources
-Numbered list of sources used.`;
+    return base + `\nResearch Level: ${researchType.toUpperCase()}\nProvide a concise answer highlighting key points.\n\n${structurePrompt}\n\nKeep sections brief — 1-2 paragraphs each. Focus on key points only.`;
   }
 
   if (depth === "standard") {
-    return base + `\nProvide a structured report:
-# Title
-## Executive Summary
-3-5 paragraph overview.
-## Detailed Analysis
-In-depth exploration of the topic with examples.
-## Key Findings
-Bullet points of important discoveries.
-## Sources
-Numbered list of sources used.`;
+    return base + `\nResearch Level: ${researchType.toUpperCase()}\nProvide moderate detail with examples and explanations.\n\n${structurePrompt}\n\nUse moderate detail — include examples, explanations, and proper citations.`;
   }
 
-  return base + `\nYour response MUST follow this exact structure:
+  // deep, academic, expert
+  return base + `\nResearch Level: ${researchType.toUpperCase()}\n\n${structurePrompt}
 
-# [Concise Research Title]
+Provide fully detailed, in-depth discussion and analysis for every section. Include:
+- Historical context and evolution of the topic
+- Technical explanations with real-world examples
+- Case studies and expert opinions
+- Statistical data and evidence in Markdown tables
+- Mermaid.js diagrams for processes and workflows
+- Critical analysis with multiple viewpoints
+- Practical applications and future outlook
 
-## Executive Summary
-3-5 paragraph comprehensive overview of all findings.
-
-## Background Context
-Historical context, foundational concepts, and how the topic evolved.
-
-## Detailed Research Analysis
-Break the research into multiple paths. For each path provide long explanations, real-world examples, comparisons, and technical breakdowns. Cover:
-- Historical context
-- Technical explanation
-- Current industry practices
-- Expert opinions
-- Case studies
-- Advantages and risks
-
-## Data & Evidence
-Include statistics, research findings, case studies, structured tables, and industry data. Use Markdown tables where appropriate.
-
-## Visual Diagrams
-Generate Mermaid.js diagrams for any processes, systems, architectures, or workflows discussed. Use fenced code blocks with language "mermaid".
-
-## Expert Insights
-Analysis from multiple expert perspectives. Include different viewpoints and schools of thought.
-
-## Advantages & Limitations
-### Advantages
-- List with explanations
-### Limitations
-- List with explanations
-### Alternative Viewpoints
-- Common misconceptions addressed
-### Critical Analysis
-- Contradictions between sources
-
-## Practical Applications
-How the knowledge can be applied, industries affected, real-world implementation strategies.
-
-## Future Outlook
-Upcoming trends, technological developments, potential disruptions, predictions for the next 5-10 years.
-
-## Conclusion
-Comprehensive wrap-up with key takeaways and recommendations.
-
-## Sources
-Numbered list of all source URLs used.
-
-${depth === "expert" ? "IMPORTANT: This is an EXPERT-LEVEL analysis. Go extremely deep into technical details, include multiple case studies, cross-reference sources, identify contradictions, and provide nuanced expert-level insights. Every claim must be supported by evidence from the sources." : ""}
-${depth === "academic" ? "IMPORTANT: This is an ACADEMIC-LEVEL analysis. Structure the report like an academic paper with rigorous analysis, proper citations, methodology discussion, and literature review style coverage." : ""}`;
+${depth === "expert" ? "IMPORTANT: This is an EXPERT-LEVEL analysis. Go extremely deep into technical details, include multiple case studies, cross-reference sources, identify contradictions, and provide nuanced expert-level insights. Every claim must be supported by evidence." : ""}
+${depth === "academic" ? "IMPORTANT: This is an ACADEMIC-LEVEL analysis. Structure with rigorous analysis, proper citations, methodology discussion, and literature review style coverage." : ""}`;
 }
 
 // --- Round-Robin Provider System ---
@@ -251,7 +248,7 @@ serve(async (req) => {
   }
 
   try {
-    const { query, depth = "standard", previousContent = "", batchIndex = 0 } = (await req.json()) as ResearchRequest;
+    const { query, depth = "standard", researchType = "general", previousContent = "", batchIndex = 0 } = (await req.json()) as ResearchRequest;
     if (!query) {
       return new Response(JSON.stringify({ error: "query is required" }), {
         status: 400,
@@ -437,7 +434,7 @@ serve(async (req) => {
             ...extractedContent.map((r) => r.source),
           ];
 
-          const systemPrompt = getSystemPrompt(depthKey);
+          const systemPrompt = getSystemPrompt(depthKey, researchType);
 
           let userPrompt: string;
           const isCont = batchIndex > 0 && previousContent;
@@ -448,6 +445,7 @@ serve(async (req) => {
             userPrompt = `Research Question: ${query}
 
 Research Depth Level: ${depthKey.toUpperCase()}
+Research Type: ${researchType.toUpperCase()}
 Batch Index: ${batchIndex}
 
 IMPORTANT: This is a CONTINUATION of previous research. Continue EXACTLY where the previous content stopped. Do NOT repeat any previously generated content. Maintain the same style, tone, and formatting.
@@ -468,6 +466,7 @@ ${allSources.length > 0 ? allSources.map((s, i) => `${i + 1}. ${s}`).join("\n") 
             userPrompt = `Research Question: ${query}
 
 Research Depth Level: ${depthKey.toUpperCase()}
+Research Type: ${researchType.toUpperCase()}
 
 Available Sources and Content:
 ${allContent || "No content was found. Please provide a general answer based on your training, and note that no external sources were available."}

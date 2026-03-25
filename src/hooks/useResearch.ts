@@ -19,6 +19,7 @@ export function useResearch() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastQueryRef = useRef("");
   const lastDepthRef = useRef("standard");
+  const lastResearchTypeRef = useRef("general");
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -152,7 +153,7 @@ export function useResearch() {
     setState((prev) => ({ ...prev, isLoading: false, isPaused: false, retryCountdown: 0 }));
   }, [startCountdown]);
 
-  const doRequest = useCallback(async (query: string, depth: string, previousContent: string, batchIndex: number, append: boolean) => {
+  const doRequest = useCallback(async (query: string, depth: string, researchType: string, previousContent: string, batchIndex: number, append: boolean) => {
     try {
       const resp = await fetch(RESEARCH_URL, {
         method: "POST",
@@ -160,7 +161,7 @@ export function useResearch() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ query, depth, previousContent, batchIndex }),
+        body: JSON.stringify({ query, depth, researchType, previousContent, batchIndex }),
       });
 
       if (!resp.ok || !resp.body) {
@@ -180,9 +181,10 @@ export function useResearch() {
     }
   }, [processStream]);
 
-  const research = useCallback(async (query: string, depth: string = "standard") => {
+  const research = useCallback(async (query: string, depth: string = "standard", researchType: string = "general") => {
     lastQueryRef.current = query;
     lastDepthRef.current = depth;
+    lastResearchTypeRef.current = researchType;
     setState({
       logs: [],
       content: "",
@@ -194,7 +196,7 @@ export function useResearch() {
       hasMore: false,
       batchIndex: 0,
     });
-    await doRequest(query, depth, "", 0, false);
+    await doRequest(query, depth, researchType, "", 0, false);
   }, [doRequest]);
 
   const continueResearch = useCallback(async () => {
@@ -206,7 +208,7 @@ export function useResearch() {
     }));
     const currentContent = stateRef.current.content;
     const nextBatch = stateRef.current.batchIndex + 1;
-    await doRequest(lastQueryRef.current, lastDepthRef.current, currentContent, nextBatch, true);
+    await doRequest(lastQueryRef.current, lastDepthRef.current, lastResearchTypeRef.current, currentContent, nextBatch, true);
   }, [doRequest]);
 
   return { ...state, research, continueResearch, lastQuery: lastQueryRef.current };
