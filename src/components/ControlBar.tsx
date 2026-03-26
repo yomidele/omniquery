@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 export type ResearchDepth = "quick" | "standard" | "deep" | "academic" | "expert";
 export type OutputType = "structured" | "summary" | "bullet" | "review";
 
@@ -10,7 +8,7 @@ interface ControlBarProps {
   onOutputTypeChange: (value: OutputType) => void;
 }
 
-const DEPTH_OPTIONS: Array<{value: ResearchDepth; label: string}> = [
+const DEPTH_OPTIONS: Array<{ value: ResearchDepth; label: string }> = [
   { value: "quick", label: "Quick" },
   { value: "standard", label: "Standard" },
   { value: "deep", label: "Deep" },
@@ -18,7 +16,7 @@ const DEPTH_OPTIONS: Array<{value: ResearchDepth; label: string}> = [
   { value: "expert", label: "Expert" },
 ];
 
-const OUTPUT_OPTIONS: Array<{value: OutputType; label: string}> = [
+const OUTPUT_OPTIONS: Array<{ value: OutputType; label: string }> = [
   { value: "structured", label: "Structured Report" },
   { value: "summary", label: "Executive Summary" },
   { value: "bullet", label: "Bullet Insights" },
@@ -26,23 +24,33 @@ const OUTPUT_OPTIONS: Array<{value: OutputType; label: string}> = [
 ];
 
 export function ControlBar({ depth, outputType, onDepthChange, onOutputTypeChange }: ControlBarProps) {
-  const sharedClass = "h-14 w-full rounded-xl border border-[rgba(var(--border),.8)] bg-[rgb(var(--surface))] px-3 text-sm text-[rgb(var(--foreground))] focus:outline-none focus:border-[rgba(var(--accent),.9)] focus:shadow-[0_0_0_2px_rgba(59,130,246,0.20)]";
-
   return (
-    <div className="mt-6 flex w-full max-w-[800px] items-center gap-4">
+    <div className="mt-4 flex flex-col sm:flex-row gap-3">
       <label className="flex-1">
-        <span className="text-xs font-medium uppercase tracking-wide text-[rgb(var(--muted-foreground))]">Research Depth</span>
-        <select value={depth} onChange={(e) => onDepthChange(e.target.value as ResearchDepth)} className={sharedClass}>
-          {DEPTH_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block font-display">
+          Research Depth
+        </span>
+        <select
+          value={depth}
+          onChange={(e) => onDepthChange(e.target.value as ResearchDepth)}
+          className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground font-display outline-none transition-colors focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
+        >
+          {DEPTH_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
       </label>
       <label className="flex-1">
-        <span className="text-xs font-medium uppercase tracking-wide text-[rgb(var(--muted-foreground))]">Output Type</span>
-        <select value={outputType} onChange={(e) => onOutputTypeChange(e.target.value as OutputType)} className={sharedClass}>
-          {OUTPUT_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block font-display">
+          Output Type
+        </span>
+        <select
+          value={outputType}
+          onChange={(e) => onOutputTypeChange(e.target.value as OutputType)}
+          className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground font-display outline-none transition-colors focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
+        >
+          {OUTPUT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
       </label>

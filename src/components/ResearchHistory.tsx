@@ -49,7 +49,7 @@ export function ResearchHistory({ onSelect, refreshKey }: ResearchHistoryProps) 
   if (loading) {
     return (
       <div className="px-4 py-6 text-center">
-        <span className="text-xs text-sidebar-foreground/40 font-display">Loading history…</span>
+        <span className="text-xs text-muted-foreground">Loading history…</span>
       </div>
     );
   }
@@ -57,8 +57,8 @@ export function ResearchHistory({ onSelect, refreshKey }: ResearchHistoryProps) 
   if (items.length === 0) {
     return (
       <div className="px-4 py-6 text-center">
-        <Clock className="h-6 w-6 text-sidebar-foreground/20 mx-auto mb-2" />
-        <p className="text-xs text-sidebar-foreground/40 font-display">No research history yet</p>
+        <Clock className="h-5 w-5 text-muted-foreground/30 mx-auto mb-2" />
+        <p className="text-xs text-muted-foreground/60 font-display">No research history yet</p>
       </div>
     );
   }
@@ -69,20 +69,18 @@ export function ResearchHistory({ onSelect, refreshKey }: ResearchHistoryProps) 
         <button
           key={item.id}
           onClick={() => onSelect({ query: item.query, content: item.content, sources: item.sources })}
-          className="w-full text-left px-4 py-2.5 hover:bg-sidebar-accent/50 transition-colors group"
+          className="w-full text-left px-4 py-2.5 hover:bg-muted transition-colors group"
         >
           <div className="flex items-start justify-between gap-2">
-            <p className="text-xs text-sidebar-foreground font-display truncate flex-1">
-              {item.query}
-            </p>
+            <p className="text-xs text-foreground font-display truncate flex-1">{item.query}</p>
             <button
               onClick={(e) => handleDelete(item.id, e)}
-              className="opacity-0 group-hover:opacity-100 text-sidebar-foreground/30 hover:text-destructive transition-all flex-shrink-0"
+              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all flex-shrink-0"
             >
               <Trash2 className="h-3 w-3" />
             </button>
           </div>
-          <p className="text-[10px] text-sidebar-foreground/30 font-display mt-0.5">
+          <p className="text-[10px] text-muted-foreground mt-0.5 font-display">
             {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
           </p>
         </button>

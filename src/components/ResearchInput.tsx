@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { Mic, Upload } from "lucide-react";
+import { useCallback, useState } from "react";
+import { Mic, Upload, Send } from "lucide-react";
 import { useVoiceSearch } from "@/hooks/useVoiceSearch";
 
 interface ResearchInputProps {
@@ -32,30 +32,33 @@ export function ResearchInput({ onSubmit, isLoading, defaultQuery = "" }: Resear
   };
 
   return (
-    <div className="omni-card p-5">
-      <form onSubmit={onFormSubmit} className="space-y-4">
+    <div className="bg-card border border-border rounded-2xl p-4 md:p-5 shadow-sm">
+      <form onSubmit={onFormSubmit}>
         <textarea
           value={displayValue}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Ask anything… get a structured, citation-backed research report"
-          className="w-full min-h-[135px] max-h-[220px] rounded-xl border border-[rgba(var(--border),.75)] bg-[rgb(var(--surface))] px-4 py-3 text-base leading-[1.6] text-[rgb(var(--foreground))] outline-none transition-all duration-200 focus:border-[rgba(var(--accent),.9)] focus:shadow-[0_0_0_2px_rgba(59,130,246,0.20)]"
-          style={{ resize: "vertical" }}
+          placeholder="Curious? Ask and dive into scholarly insights"
+          className="w-full min-h-[100px] md:min-h-[120px] max-h-[200px] rounded-xl bg-background border border-border px-4 py-3 text-sm leading-relaxed text-foreground font-body placeholder:text-muted-foreground outline-none transition-all duration-200 focus:border-primary/50 focus:ring-2 focus:ring-primary/10 resize-y"
           disabled={isLoading}
         />
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={voiceSupported ? toggleListening : undefined}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[rgba(var(--border),.85)] bg-[rgb(var(--surface))] transition hover:border-[rgba(var(--accent),.95)]"
-              aria-label="Voice input"
-            >
-              <Mic className="h-4 w-4" />
-            </button>
+        <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center gap-1.5">
+            {voiceSupported && (
+              <button
+                type="button"
+                onClick={toggleListening}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${
+                  voiceStatus === "listening" ? "text-destructive border-destructive/30 bg-destructive/5" : ""
+                }`}
+                aria-label="Voice input"
+              >
+                <Mic className="h-4 w-4" />
+              </button>
+            )}
             <label
               htmlFor="upload-research"
-              className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-[rgba(var(--border),.85)] bg-[rgb(var(--surface))] transition hover:border-[rgba(var(--accent),.95)]"
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label="Upload text file"
             >
               <Upload className="h-4 w-4" />
@@ -72,12 +75,23 @@ export function ResearchInput({ onSubmit, isLoading, defaultQuery = "" }: Resear
               />
             </label>
           </div>
+
           <button
             type="submit"
-            className="h-10 rounded-xl px-5 text-sm font-semibold text-[rgb(var(--accent-foreground))] bg-[rgb(var(--accent))] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold bg-primary text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={!displayValue.trim() || isLoading}
           >
-            {isLoading ? "Researching…" : "Start Research"}
+            {isLoading ? (
+              <>
+                <span className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                Researching…
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                Research
+              </>
+            )}
           </button>
         </div>
       </form>

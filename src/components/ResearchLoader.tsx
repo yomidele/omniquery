@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 
 const STEPS = [
-  "Searching academic sources...",
-  "Analyzing research materials...",
-  "Structuring insights...",
-  "Generating final report...",
+  "Searching academic sources…",
+  "Analyzing research materials…",
+  "Structuring insights…",
+  "Generating final report…",
 ];
 
 interface ResearchLoaderProps {
@@ -19,35 +19,34 @@ export function ResearchLoader({ isLoading }: ResearchLoaderProps) {
       setActiveIndex(STEPS.length);
       return;
     }
-
     setActiveIndex(0);
-    const timers: Array<number> = [];
-
+    const timers: number[] = [];
     STEPS.forEach((_, idx) => {
-      timers.push(window.setTimeout(() => {
-        setActiveIndex(idx);
-      }, idx * 700));
+      timers.push(window.setTimeout(() => setActiveIndex(idx), idx * 800));
     });
-
     return () => timers.forEach((id) => window.clearTimeout(id));
   }, [isLoading]);
 
   if (!isLoading) return null;
 
   return (
-    <div className="mt-10 w-full max-w-[600px] rounded-xl border border-[rgba(var(--border),.65)] bg-[rgb(var(--surface))] p-4">
-      <div className="space-y-4">
+    <div className="bg-card border border-border rounded-2xl p-5 md:p-6">
+      <div className="space-y-3">
         {STEPS.map((step, index) => {
           const isActive = index === activeIndex;
           const isComplete = index < activeIndex;
           return (
-            <p
+            <div
               key={step}
-              className={`text-sm leading-relaxed ${isActive ? "font-medium opacity-100 animate-pulse-dot" : "font-light"} ${isComplete ? "text-[rgba(var(--muted-foreground),.65)]" : "text-[rgba(var(--foreground),.9)]"}`}
-              style={{ transition: "opacity 250ms ease, color 250ms ease" }}
+              className={`flex items-center gap-3 text-sm transition-all duration-300 ${
+                isActive ? "text-foreground" : isComplete ? "text-muted-foreground/50" : "text-foreground/80"
+              }`}
             >
-              {step}
-            </p>
+              <div className={`h-2 w-2 rounded-full flex-shrink-0 transition-all ${
+                isActive ? "bg-primary animate-pulse-dot" : isComplete ? "bg-muted-foreground/30" : "bg-muted"
+              }`} />
+              <span className="font-display">{step}</span>
+            </div>
           );
         })}
       </div>

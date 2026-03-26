@@ -1,28 +1,25 @@
 export function ResearchSkeleton() {
-  const lineClass = "h-3 rounded-md bg-[rgba(var(--surface),1)] omni-skeleton";
-  const section = (title: string, rows = 3) => (
-    <div className="pb-6 border-b border-[rgba(var(--border),.5)] last:border-0 last:pb-0">
-      <h3 className="mb-3 text-lg font-semibold text-[rgb(var(--foreground))]">{title}</h3>
-      <div className="space-y-2">
-        {Array.from({ length: rows }).map((_, idx) => (
-          <div key={idx} className={lineClass} style={{ width: `${75 - idx * 10}%`, minHeight: 14 }} />
+  return (
+    <div className="bg-card border border-border rounded-2xl p-6 md:p-8">
+      <div className="flex items-center gap-1.5 mb-6">
+        <div className="h-2.5 w-2.5 rounded-full bg-muted" />
+        <div className="h-2.5 w-2.5 rounded-full bg-muted" />
+        <div className="h-2.5 w-2.5 rounded-full bg-muted" />
+      </div>
+      <div className="space-y-6">
+        <div>
+          <div className="h-7 w-2/5 rounded-lg omni-skeleton mb-3" />
+          <div className="h-4 w-3/5 rounded-md omni-skeleton" />
+        </div>
+        {["Abstract", "Introduction", "Methodology", "Findings"].map((title) => (
+          <div key={title} className="space-y-2">
+            <div className="h-5 w-28 rounded-md omni-skeleton" />
+            <div className="h-3 w-full rounded-md omni-skeleton" />
+            <div className="h-3 w-5/6 rounded-md omni-skeleton" />
+            <div className="h-3 w-3/4 rounded-md omni-skeleton" />
+          </div>
         ))}
       </div>
     </div>
-  );
-
-  return (
-    <section className="mt-10 w-full max-w-[800px] rounded-2xl border border-[rgba(var(--border),.65)] bg-[rgb(var(--surface))] p-6">
-      <div className="mb-5">
-        <div className="mb-3 h-8 w-2/5 rounded-lg omni-skeleton" />
-        <div className="h-3 w-3/5 rounded-lg omni-skeleton" />
-      </div>
-      {section("Abstract", 3)}
-      {section("Introduction", 4)}
-      {section("Methodology", 3)}
-      {section("Findings", 4)}
-      {section("Discussion", 3)}
-      {section("References", 2)}
-    </section>
   );
 }
