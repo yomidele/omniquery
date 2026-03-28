@@ -8,12 +8,13 @@ import { ResearchInput } from "@/components/ResearchInput";
 import { ResearchSkeleton } from "@/components/ResearchSkeleton";
 import { ResearchLoader } from "@/components/ResearchLoader";
 import { ResearchOutput } from "@/components/ResearchOutput";
+import { ModeSwitcher, type ResearchMode } from "@/components/ModeSwitcher";
 import { useResearch } from "@/hooks/useResearch";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Home, FlaskConical, Clock, Bookmark, Settings } from "lucide-react";
 import type { Source } from "@/types/research";
 
 const DEPTH_LABELS: Record<ResearchDepth, string> = {
@@ -22,6 +23,12 @@ const DEPTH_LABELS: Record<ResearchDepth, string> = {
   deep: "deep",
   academic: "academic",
   expert: "expert",
+};
+
+const MODE_TO_RESEARCH_TYPE: Record<ResearchMode, string> = {
+  executive: "executive",
+  research: "general",
+  literature: "literature",
 };
 
 const Index = () => {
@@ -36,6 +43,7 @@ const Index = () => {
 
   const [selectedDepth, setSelectedDepth] = useState<ResearchDepth>("standard");
   const [selectedOutputType, setSelectedOutputType] = useState<OutputType>("structured");
+  const [selectedMode, setSelectedMode] = useState<ResearchMode>("research");
 
   const [viewedContent, setViewedContent] = useState("");
   const [viewedSources, setViewedSources] = useState<Source[]>([]);
@@ -43,6 +51,7 @@ const Index = () => {
 
   const lastQueryRef = useRef("");
   const hasSavedRef = useRef(false);
+  const [lastResearchId, setLastResearchId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -54,12 +63,13 @@ const Index = () => {
     if (!isLoading && content && user && !isViewingHistory && !hasMore && !hasSavedRef.current) {
       hasSavedRef.current = true;
       const saveToHistory = async () => {
-        await supabase.from("research_history").insert({
+        const { data } = await supabase.from("research_history").insert({
           user_id: user.id,
           query: lastQueryRef.current || "Research",
           content,
           sources: sources as any,
-        });
+        }).select("id").single();
+        if (data) setLastResearchId(data.id);
         setHistoryRefreshKey((k) => k + 1);
       };
       saveToHistory();
@@ -80,8 +90,25 @@ const Index = () => {
     setViewedSources([]);
     lastQueryRef.current = query;
     hasSavedRef.current = false;
-    research(query, DEPTH_LABELS[selectedDepth], "general");
-  }, [research, selectedDepth]);
+    setLastResearchId(null);
+    research(query, DEPTH_LABELS[selectedDepth], MODE_TO_RESEARCH_TYPE[selectedMode]);
+  }, [research, selectedDepth, selectedMode]);
+
+  const handleRefineSection = useCallback((sectionBody: string, action: string) => {
+    const actionMap: Record<string, string> = {
+      simplify: "Simplify the following section, making it shorter and clearer:",
+      expand: "Expand the following section with more detail and evidence:",
+      decide: "Rewrite the following section to be decision-focused, with clear actionable recommendations:",
+    };
+    const prompt = `${actionMap[action] || "Refine:"}\n\n${sectionBody}`;
+    setIsViewingHistory(false);
+    setViewedContent("");
+    setViewedSources([]);
+    lastQueryRef.current = prompt;
+    hasSavedRef.current = false;
+    setLastResearchId(null);
+    research(prompt, DEPTH_LABELS[selectedDepth], MODE_TO_RESEARCH_TYPE[selectedMode]);
+  }, [research, selectedDepth, selectedMode]);
 
   const handleStartResearch = useCallback(() => {
     setActiveView("research");
@@ -89,6 +116,15 @@ const Index = () => {
     setViewedContent("");
     setViewedSources([]);
   }, []);
+
+  const handleModeChange = useCallback((mode: ResearchMode) => {
+    setSelectedMode(mode);
+    // If content exists and not viewing history, regenerate with new mode
+    if (lastQueryRef.current && content && !isViewingHistory && !isLoading) {
+      hasSavedRef.current = false;
+      research(lastQueryRef.current, DEPTH_LABELS[selectedDepth], MODE_TO_RESEARCH_TYPE[mode]);
+    }
+  }, [content, isViewingHistory, isLoading, research, selectedDepth]);
 
   const displayContent = isViewingHistory ? viewedContent : content;
   const displaySources = isViewingHistory ? viewedSources : sources;
@@ -101,6 +137,14 @@ const Index = () => {
     );
   }
 
+  const mobileNavItems = [
+    { id: "dashboard" as const, icon: Home, label: "Home" },
+    { id: "research" as const, icon: FlaskConical, label: "Research" },
+    { id: "history" as const, icon: Clock, label: "History" },
+    { id: "saved" as const, icon: Bookmark, label: "Saved" },
+    { id: "settings" as const, icon: Settings, label: "Settings" },
+  ];
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header userEmail={user?.email} onSignOut={signOut} />
@@ -112,7 +156,7 @@ const Index = () => {
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="fixed bottom-4 left-4 z-50 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90"
+            className="fixed bottom-16 left-4 z-50 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90"
           >
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -142,7 +186,7 @@ const Index = () => {
         )}
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
           {activeView === "dashboard" && (
             <DashboardOverview onStartResearch={handleStartResearch} />
           )}
@@ -150,6 +194,10 @@ const Index = () => {
           {activeView === "research" && (
             <div className="max-w-[800px] mx-auto px-4 py-6 md:py-10">
               <ResearchInput onSubmit={handleResearch} isLoading={isLoading} />
+
+              {/* Mode Switcher */}
+              <ModeSwitcher activeMode={selectedMode} onModeChange={handleModeChange} />
+
               <ControlBar
                 depth={selectedDepth}
                 outputType={selectedOutputType}
@@ -170,6 +218,9 @@ const Index = () => {
                     error={isViewingHistory ? null : error}
                     hasMore={isViewingHistory ? false : hasMore}
                     onContinue={continueResearch}
+                    mode={selectedMode}
+                    onRefineSection={handleRefineSection}
+                    researchId={lastResearchId}
                   />
                 )}
               </div>
@@ -199,16 +250,10 @@ const Index = () => {
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
+      {/* Mobile bottom nav with Lucide icons */}
       {isMobile && (
-        <nav className="fixed bottom-0 left-0 right-0 z-30 bg-background border-t border-border flex items-center justify-around py-2 px-2">
-          {[
-            { id: "dashboard" as const, icon: "🏠", label: "Home" },
-            { id: "research" as const, icon: "🔬", label: "Research" },
-            { id: "history" as const, icon: "📋", label: "History" },
-            { id: "saved" as const, icon: "📑", label: "Saved" },
-            { id: "settings" as const, icon: "⚙️", label: "Settings" },
-          ].map((item) => (
+        <nav className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-sm border-t border-border flex items-center justify-around py-2 px-2">
+          {mobileNavItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveView(item.id)}
@@ -218,7 +263,7 @@ const Index = () => {
                   : "text-muted-foreground"
               }`}
             >
-              <span className="text-base">{item.icon}</span>
+              <item.icon className="h-5 w-5" />
               <span>{item.label}</span>
             </button>
           ))}
