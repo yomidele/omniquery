@@ -9,6 +9,9 @@ import { ResearchSkeleton } from "@/components/ResearchSkeleton";
 import { ResearchLoader } from "@/components/ResearchLoader";
 import { ResearchOutput } from "@/components/ResearchOutput";
 import { ModeSwitcher, type ResearchMode } from "@/components/ModeSwitcher";
+import { SettingsPage } from "@/components/SettingsPage";
+import { SavedResultsPage } from "@/components/SavedResultsPage";
+import { HistoryPage } from "@/components/HistoryPage";
 import { useResearch } from "@/hooks/useResearch";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -117,9 +120,16 @@ const Index = () => {
     setViewedSources([]);
   }, []);
 
+  // Dashboard recent click → load exact result
+  const handleRecentClick = useCallback((item: { query: string; content: string; sources: Source[] }) => {
+    setViewedContent(item.content);
+    setViewedSources(item.sources);
+    setIsViewingHistory(true);
+    setActiveView("research");
+  }, []);
+
   const handleModeChange = useCallback((mode: ResearchMode) => {
     setSelectedMode(mode);
-    // If content exists and not viewing history, regenerate with new mode
     if (lastQueryRef.current && content && !isViewingHistory && !isLoading) {
       hasSavedRef.current = false;
       research(lastQueryRef.current, DEPTH_LABELS[selectedDepth], MODE_TO_RESEARCH_TYPE[mode]);
@@ -150,7 +160,6 @@ const Index = () => {
       <Header userEmail={user?.email} onSignOut={signOut} />
 
       <div className="flex flex-1 min-h-0">
-        {/* Mobile sidebar toggle */}
         {isMobile && (
           <Button
             variant="ghost"
@@ -162,7 +171,6 @@ const Index = () => {
           </Button>
         )}
 
-        {/* Sidebar - desktop always, mobile overlay */}
         {(!isMobile || sidebarOpen) && (
           <>
             {isMobile && (
@@ -171,10 +179,7 @@ const Index = () => {
             <div className={isMobile ? "fixed left-0 top-14 bottom-0 z-40" : ""}>
               <AppSidebar
                 activeView={activeView}
-                onViewChange={(v) => {
-                  setActiveView(v);
-                  setSidebarOpen(false);
-                }}
+                onViewChange={(v) => { setActiveView(v); setSidebarOpen(false); }}
                 logs={logs}
                 isLoading={isLoading}
                 historyRefreshKey={historyRefreshKey}
@@ -185,26 +190,21 @@ const Index = () => {
           </>
         )}
 
-        {/* Main content */}
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
           {activeView === "dashboard" && (
-            <DashboardOverview onStartResearch={handleStartResearch} />
+            <DashboardOverview onStartResearch={handleStartResearch} onRecentClick={handleRecentClick} />
           )}
 
           {activeView === "research" && (
             <div className="max-w-[800px] mx-auto px-4 py-6 md:py-10">
               <ResearchInput onSubmit={handleResearch} isLoading={isLoading} />
-
-              {/* Mode Switcher */}
               <ModeSwitcher activeMode={selectedMode} onModeChange={handleModeChange} />
-
               <ControlBar
                 depth={selectedDepth}
                 outputType={selectedOutputType}
                 onDepthChange={setSelectedDepth}
                 onOutputTypeChange={setSelectedOutputType}
               />
-
               <div className="mt-8">
                 {isLoading && !displayContent && <ResearchLoader isLoading={isLoading} />}
                 {!isLoading && !displayContent && <ResearchSkeleton />}
@@ -228,29 +228,19 @@ const Index = () => {
           )}
 
           {activeView === "history" && (
-            <div className="max-w-[800px] mx-auto px-4 py-6 md:py-10">
-              <h2 className="text-xl font-bold text-foreground mb-6 font-display">Research History</h2>
-              <p className="text-sm text-muted-foreground font-body">Select a research entry from the sidebar to view it.</p>
-            </div>
+            <HistoryPage onSelect={handleHistorySelect} refreshKey={historyRefreshKey} />
           )}
 
           {activeView === "saved" && (
-            <div className="max-w-[800px] mx-auto px-4 py-6 md:py-10">
-              <h2 className="text-xl font-bold text-foreground mb-6 font-display">Saved Reports</h2>
-              <p className="text-sm text-muted-foreground font-body">Saved reports will appear here.</p>
-            </div>
+            <SavedResultsPage onSelect={handleHistorySelect} />
           )}
 
           {activeView === "settings" && (
-            <div className="max-w-[800px] mx-auto px-4 py-6 md:py-10">
-              <h2 className="text-xl font-bold text-foreground mb-6 font-display">Settings</h2>
-              <p className="text-sm text-muted-foreground font-body">Account settings coming soon.</p>
-            </div>
+            <SettingsPage />
           )}
         </main>
       </div>
 
-      {/* Mobile bottom nav with Lucide icons */}
       {isMobile && (
         <nav className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-sm border-t border-border flex items-center justify-around py-2 px-2">
           {mobileNavItems.map((item) => (
