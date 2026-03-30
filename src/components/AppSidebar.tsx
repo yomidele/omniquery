@@ -1,12 +1,12 @@
-import { Home, PlusCircle, Clock, BookmarkCheck, Settings } from "lucide-react";
+import { Home, PlusCircle, Clock, BookmarkCheck, Settings, FileText } from "lucide-react";
 import { ResearchLogs } from "./ResearchLogs";
 import { ResearchHistory } from "./ResearchHistory";
 import type { Source } from "@/types/research";
 import type { LogEntry } from "@/types/research";
 
 interface AppSidebarProps {
-  activeView: "dashboard" | "research" | "history" | "saved" | "settings";
-  onViewChange: (view: "dashboard" | "research" | "history" | "saved" | "settings") => void;
+  activeView: "dashboard" | "research" | "history" | "saved" | "settings" | "documents";
+  onViewChange: (view: "dashboard" | "research" | "history" | "saved" | "settings" | "documents") => void;
   logs: LogEntry[];
   isLoading: boolean;
   historyRefreshKey: number;
@@ -17,6 +17,7 @@ interface AppSidebarProps {
 const navItems = [
   { id: "dashboard" as const, icon: Home, label: "Dashboard" },
   { id: "research" as const, icon: PlusCircle, label: "New Research" },
+  { id: "documents" as const, icon: FileText, label: "Document Tools" },
   { id: "history" as const, icon: Clock, label: "History" },
   { id: "saved" as const, icon: BookmarkCheck, label: "Saved" },
   { id: "settings" as const, icon: Settings, label: "Settings" },

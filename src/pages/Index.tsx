@@ -12,12 +12,13 @@ import { ModeSwitcher, type ResearchMode } from "@/components/ModeSwitcher";
 import { SettingsPage } from "@/components/SettingsPage";
 import { SavedResultsPage } from "@/components/SavedResultsPage";
 import { HistoryPage } from "@/components/HistoryPage";
+import { DocumentTools } from "@/components/DocumentTools";
 import { useResearch } from "@/hooks/useResearch";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Home, FlaskConical, Clock, Bookmark, Settings } from "lucide-react";
+import { Menu, X, Home, FlaskConical, Clock, Bookmark, Settings, FileText } from "lucide-react";
 import type { Source } from "@/types/research";
 
 const DEPTH_LABELS: Record<ResearchDepth, string> = {
@@ -40,7 +41,7 @@ const Index = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const [activeView, setActiveView] = useState<"dashboard" | "research" | "history" | "saved" | "settings">("dashboard");
+  const [activeView, setActiveView] = useState<"dashboard" | "research" | "history" | "saved" | "settings" | "documents">("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
@@ -150,8 +151,8 @@ const Index = () => {
   const mobileNavItems = [
     { id: "dashboard" as const, icon: Home, label: "Home" },
     { id: "research" as const, icon: FlaskConical, label: "Research" },
+    { id: "documents" as const, icon: FileText, label: "Docs" },
     { id: "history" as const, icon: Clock, label: "History" },
-    { id: "saved" as const, icon: Bookmark, label: "Saved" },
     { id: "settings" as const, icon: Settings, label: "Settings" },
   ];
 
@@ -237,6 +238,10 @@ const Index = () => {
 
           {activeView === "settings" && (
             <SettingsPage />
+          )}
+
+          {activeView === "documents" && (
+            <DocumentTools />
           )}
         </main>
       </div>
