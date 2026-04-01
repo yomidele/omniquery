@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Home, FlaskConical, Clock, Bookmark, Settings, FileText } from "lucide-react";
 import type { Source } from "@/types/research";
+import { trackEvent } from "@/lib/posthog";
 
 const DEPTH_LABELS: Record<ResearchDepth, string> = {
   quick: "quick",

@@ -23,6 +23,11 @@ const Login = () => {
     if (error) {
       toast({ title: "Sign in failed", description: error.message, variant: "destructive" });
     } else {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        identifyUser(session.user.id, { email: session.user.email });
+        trackEvent("user_logged_in", { method: "email" });
+      }
       navigate("/research");
     }
   };
