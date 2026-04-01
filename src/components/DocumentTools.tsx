@@ -107,14 +107,6 @@ export function DocumentTools() {
         return;
       }
 
-      if (user) {
-        await supabase.from("research_history").insert({
-          user_id: user.id,
-          query: `[Document] ${file.name}`,
-          content: text.slice(0, 50000),
-          sources: [] as any,
-        });
-      }
 
       setProgress(100);
       setResult({ text, fileName: file.name, fileType: type, processedAt: new Date().toISOString() });
