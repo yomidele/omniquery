@@ -59,7 +59,7 @@ async function pdfToImages(file: File, format: "jpg" | "png", onProgress?: (p: n
 
 async function imageToPdf(file: File): Promise<Blob> {
   const pdfDoc = await PDFDocument.create();
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  const bytes = new Uint8Array(await file.arrayBuffer()) as unknown as ArrayBuffer;
   const isJpg = file.type === "image/jpeg";
   const img = isJpg ? await pdfDoc.embedJpg(bytes) : await pdfDoc.embedPng(bytes);
   const page = pdfDoc.addPage([img.width, img.height]);
