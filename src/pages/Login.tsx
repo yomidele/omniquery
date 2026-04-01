@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { trackEvent, identifyUser } from "@/lib/posthog";
 
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
