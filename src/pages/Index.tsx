@@ -18,7 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Home, FlaskConical, Clock, Bookmark, Settings, FileText } from "lucide-react";
+import { Menu, X, Home, FlaskConical, Clock, Settings, FileText } from "lucide-react";
 import type { Source } from "@/types/research";
 import { trackEvent } from "@/lib/posthog";
 
