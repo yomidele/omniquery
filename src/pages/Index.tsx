@@ -97,7 +97,7 @@ const Index = () => {
     hasSavedRef.current = false;
     setLastResearchId(null);
     research(query, DEPTH_LABELS[selectedDepth], MODE_TO_RESEARCH_TYPE[selectedMode]);
-  }, [research, selectedDepth, selectedMode]);
+    trackEvent("research_started", { query, depth: selectedDepth, mode: selectedMode });
 
   const handleRefineSection = useCallback((sectionBody: string, action: string) => {
     const actionMap: Record<string, string> = {
