@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { trackEvent, identifyUser } from "@/lib/posthog";
 
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,11 @@ const Login = () => {
     if (error) {
       toast({ title: "Sign in failed", description: error.message, variant: "destructive" });
     } else {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        identifyUser(session.user.id, { email: session.user.email });
+        trackEvent("user_logged_in", { method: "email" });
+      }
       navigate("/research");
     }
   };

@@ -76,6 +76,42 @@ export type Database = {
           },
         ]
       }
+      file_conversions: {
+        Row: {
+          converted_file_url: string | null
+          created_at: string
+          file_name: string
+          id: string
+          input_format: string
+          original_file_url: string | null
+          output_format: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          converted_file_url?: string | null
+          created_at?: string
+          file_name?: string
+          id?: string
+          input_format: string
+          original_file_url?: string | null
+          output_format: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          converted_file_url?: string | null
+          created_at?: string
+          file_name?: string
+          id?: string
+          input_format?: string
+          original_file_url?: string | null
+          output_format?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       folders: {
         Row: {
           created_at: string
