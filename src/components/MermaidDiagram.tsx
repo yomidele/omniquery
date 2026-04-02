@@ -9,6 +9,9 @@ mermaid.initialize({
   securityLevel: "loose",
   fontFamily: "Inter, sans-serif",
   suppressErrorRendering: true,
+  flowchart: { nodeSpacing: 20, rankSpacing: 30, padding: 8, htmlLabels: true },
+  sequence: { mirrorActors: false, bottomMarginAdj: 2, messageMargin: 30 },
+  fontSize: 11,
 });
 
 let counter = 0;
@@ -44,8 +47,8 @@ function generateFallbackSVG(chart: string): string | null {
     if (nodes.size === 0) return null;
 
     const nodeList = Array.from(nodes.entries());
-    const boxW = 160, boxH = 40, gapY = 70, paddingX = 40;
-    const svgH = nodeList.length * gapY + 40;
+    const boxW = 120, boxH = 30, gapY = 50, paddingX = 20;
+    const svgH = nodeList.length * gapY + 30;
     const svgW = boxW + paddingX * 2;
     const cx = svgW / 2;
 
@@ -162,12 +165,12 @@ export function MermaidDiagram({ chart }: { chart: string }) {
 
   if (renderState === "fallback-svg" && fallbackSvg) {
     return (
-      <div className="my-4 rounded-lg bg-card border border-border p-4 space-y-2">
+      <div className="my-4 rounded-lg bg-card border border-border p-3 space-y-2">
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-display">
           <AlertTriangle className="h-3 w-3" />
           Diagram rendered using alternative engine
         </div>
-        <div className="flex justify-center overflow-x-auto" dangerouslySetInnerHTML={{ __html: fallbackSvg }} />
+        <div className="flex justify-center overflow-x-auto [&_svg]:max-h-[250px] [&_svg]:w-auto" dangerouslySetInnerHTML={{ __html: fallbackSvg }} />
       </div>
     );
   }
@@ -175,7 +178,7 @@ export function MermaidDiagram({ chart }: { chart: string }) {
   return (
     <div
       ref={ref}
-      className="my-4 flex justify-center overflow-x-auto rounded-lg bg-card border border-border p-4"
+      className="my-4 flex justify-center overflow-x-auto rounded-lg bg-card border border-border p-3 [&_svg]:max-h-[280px] [&_svg]:w-auto [&_svg]:mx-auto"
     />
   );
 }
