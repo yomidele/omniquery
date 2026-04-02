@@ -2,6 +2,9 @@ import { Link } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
 import { LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import logoLight from "@/assets/logo-light.png";
+import logoDark from "@/assets/logo-dark.png";
+import { useEffect, useState } from "react";
 
 interface HeaderProps {
   userEmail?: string;
@@ -11,14 +14,25 @@ interface HeaderProps {
 
 export function Header({ userEmail, onSignOut, showAuth = false }: HeaderProps) {
   const logoTarget = userEmail ? "/research" : "/";
+  const [theme, setTheme] = useState(() => document.documentElement.getAttribute("data-theme") || "light");
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setTheme(document.documentElement.getAttribute("data-theme") || "light");
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 h-14 bg-background/80 backdrop-blur-xl border-b border-border">
       <div className="flex h-full items-center justify-between px-4 md:px-6">
         <Link to={logoTarget} className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">O</span>
-          </div>
+          <img
+            src={theme === "dark" ? logoDark : logoLight}
+            alt="OmniQuery"
+            className="h-8 w-8 object-contain"
+          />
           <span className="text-base font-bold tracking-tight text-foreground font-display">OmniQuery</span>
         </Link>
 
