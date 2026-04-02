@@ -175,7 +175,7 @@ export function MermaidDiagram({ chart }: { chart: string }) {
   return (
     <div
       ref={ref}
-      className="my-4 flex justify-center overflow-x-auto rounded-lg bg-card border border-border p-4"
+      className="my-4 flex justify-center overflow-x-auto rounded-lg bg-card border border-border p-3 [&_svg]:max-h-[280px] [&_svg]:w-auto [&_svg]:mx-auto"
     />
   );
 }
