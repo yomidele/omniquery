@@ -30,7 +30,7 @@ const Login = () => {
         identifyUser(session.user.id, { email: session.user.email });
         trackEvent("user_logged_in", { method: "email" });
       }
-      navigate("/research");
+      setShowSplash(true);
     }
   };
 
