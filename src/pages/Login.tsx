@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { trackEvent, identifyUser } from "@/lib/posthog";
+import { SplashScreen } from "@/components/SplashScreen";
 
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -28,9 +30,13 @@ const Login = () => {
         identifyUser(session.user.id, { email: session.user.email });
         trackEvent("user_logged_in", { method: "email" });
       }
-      navigate("/research");
+      setShowSplash(true);
     }
   };
+
+  if (showSplash) {
+    return <SplashScreen onComplete={() => navigate("/research")} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-4 py-12">
