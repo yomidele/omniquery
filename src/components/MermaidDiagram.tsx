@@ -165,12 +165,12 @@ export function MermaidDiagram({ chart }: { chart: string }) {
 
   if (renderState === "fallback-svg" && fallbackSvg) {
     return (
-      <div className="my-4 rounded-lg bg-card border border-border p-4 space-y-2">
+      <div className="my-4 rounded-lg bg-card border border-border p-3 space-y-2">
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-display">
           <AlertTriangle className="h-3 w-3" />
           Diagram rendered using alternative engine
         </div>
-        <div className="flex justify-center overflow-x-auto" dangerouslySetInnerHTML={{ __html: fallbackSvg }} />
+        <div className="flex justify-center overflow-x-auto [&_svg]:max-h-[250px] [&_svg]:w-auto" dangerouslySetInnerHTML={{ __html: fallbackSvg }} />
       </div>
     );
   }
