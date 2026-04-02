@@ -9,6 +9,9 @@ mermaid.initialize({
   securityLevel: "loose",
   fontFamily: "Inter, sans-serif",
   suppressErrorRendering: true,
+  flowchart: { nodeSpacing: 20, rankSpacing: 30, padding: 8, htmlLabels: true },
+  sequence: { mirrorActors: false, bottomMarginAdj: 2, messageMargin: 30 },
+  fontSize: 11,
 });
 
 let counter = 0;
