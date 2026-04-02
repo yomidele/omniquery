@@ -47,8 +47,8 @@ function generateFallbackSVG(chart: string): string | null {
     if (nodes.size === 0) return null;
 
     const nodeList = Array.from(nodes.entries());
-    const boxW = 160, boxH = 40, gapY = 70, paddingX = 40;
-    const svgH = nodeList.length * gapY + 40;
+    const boxW = 120, boxH = 30, gapY = 50, paddingX = 20;
+    const svgH = nodeList.length * gapY + 30;
     const svgW = boxW + paddingX * 2;
     const cx = svgW / 2;
 
