@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { TrademarkBadge } from "../TrademarkBadge";
 
 export function LandingFooter() {
   return (
@@ -38,8 +39,9 @@ export function LandingFooter() {
             </ul>
           </div>
         </div>
-        <div className="border-t border-border pt-6 text-center">
+        <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">© 2026 OmniQuery. All rights reserved.</p>
+          <TrademarkBadge size="sm" />
         </div>
       </div>
     </footer>
