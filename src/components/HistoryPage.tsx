@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Clock, Trash2, Search, ExternalLink, BookmarkPlus } from "lucide-react";
+import { Clock, Trash2, Search, ExternalLink, BookmarkPlus, Share2, FileDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import type { Source } from "@/types/research";
+
+type DateFilter = "all" | "today" | "week" | "month";
 
 interface HistoryItem {
   id: string;
@@ -27,6 +29,7 @@ export function HistoryPage({ onSelect, refreshKey }: HistoryPageProps) {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
 
   useEffect(() => {
     if (!user) return;
@@ -74,9 +77,56 @@ export function HistoryPage({ onSelect, refreshKey }: HistoryPageProps) {
     }
   };
 
-  const filtered = search
-    ? items.filter((item) => item.query.toLowerCase().includes(search.toLowerCase()))
-    : items;
+  const handleShare = async (item: HistoryItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return;
+    try {
+      const token = (crypto.randomUUID?.() || Math.random().toString(36).slice(2)).replace(/-/g, "").slice(0, 16);
+      const { error } = await supabase.from("shared_research").insert({
+        token,
+        query: item.query.slice(0, 200),
+        content: item.content,
+        sources: item.sources as unknown as any,
+        created_by: user.id,
+      });
+      if (error) throw error;
+      const url = `${window.location.origin}/share/${token}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Share link copied");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to share");
+    }
+  };
+
+  const handleMarkdown = (item: HistoryItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const refs = item.sources.length > 0
+      ? `\n\n## References\n\n${item.sources.map((s, i) => `${i + 1}. [${s.title || s.url}](${s.url})`).join("\n")}`
+      : "";
+    const blob = new Blob([item.content + refs], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${item.query.slice(0, 40).replace(/[^a-z0-9]+/gi, "_") || "report"}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const filtered = useMemo(() => {
+    const now = Date.now();
+    const cutoffs: Record<DateFilter, number> = {
+      all: 0,
+      today: now - 24 * 60 * 60 * 1000,
+      week: now - 7 * 24 * 60 * 60 * 1000,
+      month: now - 30 * 24 * 60 * 60 * 1000,
+    };
+    const cutoff = cutoffs[dateFilter];
+    return items.filter((item) => {
+      if (cutoff && new Date(item.created_at).getTime() < cutoff) return false;
+      if (search && !item.query.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [items, search, dateFilter]);
 
   if (loading) {
     return (
