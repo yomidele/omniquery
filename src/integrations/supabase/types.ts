@@ -293,6 +293,36 @@ export type Database = {
           },
         ]
       }
+      shared_research: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          query: string
+          sources: Json
+          token: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by: string
+          id?: string
+          query: string
+          sources?: Json
+          token: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          query?: string
+          sources?: Json
+          token?: string
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           color: string
