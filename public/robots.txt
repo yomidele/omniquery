@@ -1,8 +1,12 @@
 User-agent: Googlebot
 Allow: /
+Disallow: /research
+Disallow: /api-docs
 
 User-agent: Bingbot
 Allow: /
+Disallow: /research
+Disallow: /api-docs
 
 User-agent: Twitterbot
 Allow: /
@@ -12,3 +16,7 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /research
+Disallow: /api-docs
+
+Sitemap: https://omniquery.lovable.app/sitemap.xml
