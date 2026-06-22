@@ -150,14 +150,39 @@ export function HistoryPage({ onSelect, refreshKey }: HistoryPageProps) {
       </div>
 
       {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="relative mb-3">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search your research history…"
+          aria-label="Search research history"
           className="pl-10"
         />
+      </div>
+
+      {/* Date filter chips */}
+      <div className="flex flex-wrap gap-1.5 mb-5" role="tablist" aria-label="Filter by date">
+        {([
+          { id: "all", label: "All time" },
+          { id: "today", label: "Today" },
+          { id: "week", label: "Past week" },
+          { id: "month", label: "Past month" },
+        ] as { id: DateFilter; label: string }[]).map((opt) => (
+          <button
+            key={opt.id}
+            role="tab"
+            aria-selected={dateFilter === opt.id}
+            onClick={() => setDateFilter(opt.id)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors min-h-9 ${
+              dateFilter === opt.id
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/40"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {filtered.length === 0 ? (
@@ -197,23 +222,45 @@ export function HistoryPage({ onSelect, refreshKey }: HistoryPageProps) {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex-shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label="Save to reports"
                       className="h-8 w-8 text-muted-foreground hover:text-primary"
                       onClick={(e) => handleSave(item, e)}
                       title="Save to reports"
                     >
-                      <BookmarkPlus className="h-3.5 w-3.5" />
+                      <BookmarkPlus className="h-3.5 w-3.5" aria-hidden="true" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label="Download as Markdown"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary"
+                      onClick={(e) => handleMarkdown(item, e)}
+                      title="Download as Markdown"
+                    >
+                      <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Copy share link"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary"
+                      onClick={(e) => handleShare(item, e)}
+                      title="Copy share link"
+                    >
+                      <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Delete from history"
                       className="h-8 w-8 text-muted-foreground hover:text-destructive"
                       onClick={(e) => handleDelete(item.id, e)}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                     </Button>
                   </div>
                 </div>
