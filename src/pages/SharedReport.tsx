@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { ResearchOutput } from "@/components/ResearchOutput";
+import { CitationsPanel } from "@/components/CitationsPanel";
 import { Button } from "@/components/ui/button";
 import type { Source } from "@/types/research";
 
@@ -52,7 +53,7 @@ const SharedReport = () => {
         <meta name="robots" content="noindex, follow" />
       </Helmet>
       <Header />
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8">
         {loading && <div className="text-sm text-muted-foreground">Loading shared report…</div>}
         {notFound && (
           <div className="text-center py-20">
@@ -62,23 +63,27 @@ const SharedReport = () => {
           </div>
         )}
         {item && (
-          <>
-            <div className="mb-6">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Shared research</p>
-              <h1 className="text-2xl md:text-3xl font-bold font-display">{item.query}</h1>
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6">
+            <div className="min-w-0">
+              <div className="mb-6">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Shared research</p>
+                <h1 className="text-2xl md:text-3xl font-bold font-display">{item.query}</h1>
+              </div>
+              <CitationsPanel sources={item.sources} />
+              <ResearchOutput
+                content={item.content}
+                sources={item.sources}
+                isLoading={false}
+                error={null}
+                hasMore={false}
+                onContinue={() => {}}
+                isPaused={false}
+                retryCountdown={0}
+                mode="research"
+              />
             </div>
-            <ResearchOutput
-              content={item.content}
-              sources={item.sources}
-              isLoading={false}
-              error={null}
-              hasMore={false}
-              onContinue={() => {}}
-              isPaused={false}
-              retryCountdown={0}
-              mode="research"
-            />
-          </>
+            <CitationsPanel sources={item.sources} />
+          </div>
         )}
       </main>
     </div>
