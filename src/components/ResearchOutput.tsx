@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import {
   ClipboardCopy, Download, PlayCircle, ChevronDown, ChevronUp,
   Minimize2, Maximize2, Target, Shield, AlertTriangle, Lightbulb,
-  CheckCircle2
+  CheckCircle2, FileDown, Share2
 } from "lucide-react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Source } from "@/types/research";
 import type { ResearchMode } from "@/components/ModeSwitcher";
@@ -315,6 +316,41 @@ export function ResearchOutput({ content, sources, isLoading, error, hasMore, on
     }
   }, [researchId]);
 
+  const handleDownloadMarkdown = useCallback(() => {
+    const refs = sources.length > 0
+      ? `\n\n## References\n\n${sources.map((s, i) => `${i + 1}. [${s.title || s.url}](${s.url})`).join("\n")}`
+      : "";
+    const blob = new Blob([content + refs], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "omniquery_report.md";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [content, sources]);
+
+  const handleShare = useCallback(async () => {
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Sign in to create share links");
+        return;
+      }
+      const token = (crypto.randomUUID?.() || Math.random().toString(36).slice(2)).replace(/-/g, "").slice(0, 16);
+      const query = (content.match(/^#\s+(.+)/m)?.[1] || "Shared research").slice(0, 200);
+      const { error } = await supabase.from("shared_research").insert({
+        token, query, content, sources: sources as unknown as any, created_by: user.id,
+      });
+      if (error) throw error;
+      const url = `${window.location.origin}/share/${token}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Share link copied to clipboard");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to create share link");
+    }
+  }, [content, sources]);
+
   const handleLinkClick = useCallback((url: string, title?: string) => {
     setViewerUrl({ url, title });
   }, []);
@@ -337,13 +373,21 @@ export function ResearchOutput({ content, sources, isLoading, error, hasMore, on
       {/* Toolbar - ALWAYS visible, sticky on mobile, static on desktop */}
       {content && !isLoading && (
         <div className="flex justify-end gap-2 mb-3 sticky top-0 z-20 bg-background/95 backdrop-blur-sm py-2 px-1">
-          <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5 text-xs h-9">
-            <ClipboardCopy className="h-3.5 w-3.5" />
+          <Button variant="outline" size="sm" onClick={handleCopy} aria-label="Copy report to clipboard" className="gap-1.5 text-xs h-9">
+            <ClipboardCopy className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">Copy</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5 text-xs h-9">
-            <Download className="h-3.5 w-3.5" />
+          <Button variant="outline" size="sm" onClick={handleDownloadMarkdown} aria-label="Download report as Markdown" className="gap-1.5 text-xs h-9">
+            <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">MD</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleDownload} aria-label="Download report as PDF" className="gap-1.5 text-xs h-9">
+            <Download className="h-3.5 w-3.5" aria-hidden="true" />
             <span>PDF</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleShare} aria-label="Create a shareable link" className="gap-1.5 text-xs h-9">
+            <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">Share</span>
           </Button>
         </div>
       )}
